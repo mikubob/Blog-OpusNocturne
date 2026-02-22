@@ -12,6 +12,8 @@ import com.xuan.entity.vo.article.ArticleAdminDetailVO;
 import com.xuan.entity.vo.article.ArticleAdminListVO;
 import com.xuan.entity.vo.article.ArticleCreatVO;
 
+import java.util.List;
+
 public interface IArticleService extends IService<Article> {
 
     /**
@@ -50,9 +52,9 @@ public interface IArticleService extends IService<Article> {
 
     /**
      * 批量删除文章
-     * @param ids 文章id数组
+     * @param ids 文章id集合
      */
-    void batchDeleteArticle(Long[] ids);
+    void batchDeleteArticle(List<Long> ids);
 
     /**
      * 文章置顶/取消置顶

@@ -24,10 +24,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.stream.Collectors;
 
+import static com.xuan.common.constant.RedisConstant.ARTICLE_DETAIL_KEY_PREFIX;
+import static com.xuan.common.constant.RedisConstant.ARTICLE_VIEW_KEY_PREFIX;
+import static com.xuan.common.constant.RedisConstant.CATEGORY_LIST_KEY;
+import static com.xuan.common.constant.RedisConstant.TAG_LIST_KEY;
 import static com.xuan.common.enums.ArticleStatusEnum.PUBLISHED;
 import static com.xuan.common.enums.ErrorCode.ARTICLE_CREATE_FAILED;
+import static com.xuan.common.enums.ErrorCode.ARTICLE_DELETE_EMPTY;
 import static com.xuan.common.enums.ErrorCode.ARTICLE_NOT_FOUND;
 
 @Service
@@ -149,7 +155,24 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
      * @param articleUpdateDTO 更新参数
      */
     @Override
+    @Transactional
     public void updateArticle(Long id, ArticleUpdateDTO articleUpdateDTO) {
+        //1.查询文章并做非空判断
+        Article article = getById(id);
+        if (article == null) {
+            throw new BusinessException(ARTICLE_NOT_FOUND);
+        }
+        //2.更新文章基本信息
+        BeanUtil.copyProperties(articleUpdateDTO, article,"id");
+        if (article.getStatus().equals(PUBLISHED)&&article.getPublishTime() == null){
+            article.setPublishTime(LocalDateTime.now());
+        }
+        updateById(article);
+
+        //TODO 3.更新标签关联：先删除旧的，再插入新的
+        //4.清除文章详情缓存和分类/标签列表缓存
+        clearArticleDetailCache(id);
+        clearCategoryTagCache();
 
     }
 
@@ -159,18 +182,69 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
      * @param id 文章id
      */
     @Override
+    @Transactional
     public void deleteArticle(Long id) {
+        //1.查询文章并做非空判断
+        Article article = getById(id);
+        if (article == null) {
+            throw new BusinessException(ARTICLE_NOT_FOUND);
+        }
+        //2.删除文章
+        removeById(id);
+        //TODO 3.删除标签关联
 
+        //4.清除文章详情缓存和分类/标签列表缓存
+        clearArticleDetailCache(id);
+        clearCategoryTagCache();
+
+        //5.删除文章实时浏览量缓存
+        redisTemplate.delete(ARTICLE_VIEW_KEY_PREFIX + id);
     }
 
     /**
      * 批量删除文章
      *
-     * @param ids 文章id数组
+     * @param ids 文章id集合
      */
     @Override
-    public void batchDeleteArticle(Long[] ids) {
+    @Transactional
+    public void batchDeleteArticle(List<Long>ids) {
+        //1.判断ids是否为空
+        if (ids == null || ids.isEmpty()) {
+            throw new BusinessException(ARTICLE_DELETE_EMPTY);
+        }
 
+        //2.检查文章是否存在
+        List<Article> articles = listByIds(ids);
+        List<Long> existingIds = articles.stream()
+                .map(Article::getId)
+                .toList();
+        if (existingIds.isEmpty()){
+            throw new BusinessException(ARTICLE_NOT_FOUND);
+        }
+
+        //3.找出不存在的文章id
+        List<Long> notExistingIds = ids.stream()
+                .filter(id->!existingIds.contains(id))
+                .toList();
+        if (!notExistingIds.isEmpty()){
+            throw new BusinessException("文章【"+notExistingIds.stream()
+                    .map(String::valueOf)
+                    .collect(Collectors.joining(","))+"】不存在或者已被删除");
+        }
+
+        //TODO4.批量删除文章及其关联的标签
+        removeBatchByIds(ids);
+        for (Long id : ids) {
+            //TODO articleTagMapper.deleteByArticleId(id);
+
+            //清除文章详情缓存
+            clearArticleDetailCache(id);
+            redisTemplate.delete(ARTICLE_VIEW_KEY_PREFIX + id);
+        }
+
+        // 5.清除分类/标签列表缓存
+        clearCategoryTagCache();
     }
 
     /**
@@ -180,8 +254,17 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
      * @param articleTopDTO 置顶参数
      */
     @Override
+    @Transactional
     public void updateArticleTop(Long id, ArticleTopDTO articleTopDTO) {
+        //1.查询文章并做非空判断
+        Article article = getById(id);
+        if (article == null) {
+            throw new BusinessException(ARTICLE_NOT_FOUND);
+        }
 
+        //2.更新文章置顶状态
+        article.setIsTop(articleTopDTO.getIsTop());
+        updateById(article);
     }
 
     /**
@@ -192,7 +275,20 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
      */
     @Override
     public void updateArticleStatus(Long id, ArticleStatusDTO articleStatusDTO) {
-
+        //1.查询文章并做非空判断
+        Article article = getById(id);
+        if (article == null) {
+            throw new BusinessException(ARTICLE_NOT_FOUND);
+        }
+        //2.更新文章状态
+        article.setStatus(articleStatusDTO.getStatus());
+        //如果文章状态为发布，则设置发布时间
+        if (article.getStatus().equals(PUBLISHED)&&article.getPublishTime() == null){
+            article.setPublishTime(LocalDateTime.now());
+        }
+        updateById(article);
+        //3.清除文章详情缓存
+        clearArticleDetailCache(id);
     }
 
     /**
@@ -203,10 +299,26 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
      * @return 实时的浏览量
      */
     private Long getViewCountFromRedis(Long ArticleId, Long dbViewCount){
-        String viewKey= RedisConstant.ARTICLE_VIEW_KEY_PREFIX+ArticleId;//浏览量key
+        String viewKey= ARTICLE_VIEW_KEY_PREFIX+ArticleId;//浏览量key
         String redisVal=redisTemplate.opsForValue().get(viewKey);//从redis中获取浏览量
         long redisIncrement=(redisVal==null)?0:Long.parseLong(redisVal);//redis中浏览量的增量
         long dbBase=(dbViewCount==null)?0:dbViewCount;
         return redisIncrement+dbBase;
+    }
+
+    /**
+     * 清除文章详情缓存
+     */
+    private void clearArticleDetailCache(Long articleId){
+        String articleDetailKey=ARTICLE_DETAIL_KEY_PREFIX+articleId;
+        redisTemplate.delete(articleDetailKey);
+    }
+
+    /**
+     * 清除分类/标签列表缓存
+     */
+    private void clearCategoryTagCache() {
+        redisTemplate.delete(CATEGORY_LIST_KEY);
+        redisTemplate.delete(TAG_LIST_KEY);
     }
 }

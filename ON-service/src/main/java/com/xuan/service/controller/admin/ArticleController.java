@@ -24,6 +24,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @Tag(name="后台文章管理相关接口")
 @RestController
 @RequestMapping("/api/admin/article")
@@ -66,7 +68,7 @@ public class ArticleController {
 
     @Operation(summary = "批量删除文章")
     @DeleteMapping("/batch-delete")
-    public Result<Void> batchDeleteArticle(@RequestBody Long[] ids){
+    public Result<Void> batchDeleteArticle(@RequestBody List<Long> ids){
         articleService.batchDeleteArticle(ids);
         return Result.success();
     }

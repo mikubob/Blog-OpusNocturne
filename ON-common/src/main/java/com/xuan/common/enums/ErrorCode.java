@@ -88,6 +88,8 @@ public enum ErrorCode {
     CATEGORY_HAS_ARTICLES(5006, "该分类下还有文章，无法删除"),
     /** 文章创建失败，请稍后再试 */
     ARTICLE_CREATE_FAILED(5007, "文章创建失败，请稍后再试"),
+    /** 没有选择要删除的文章 */
+    ARTICLE_DELETE_EMPTY(5008, "没有选择要删除的文章"),
 
     // ==================== 评论相关错误码 6xxx ====================
 
