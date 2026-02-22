@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.xuan</groupId>
+        <artifactId>OpusNocturne</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>ON-entity</artifactId>
+
+    <!--
+        ON-entity 是实体模块
+        职责：PO、DTO、VO、常量定义
+        依赖 ON-common（继承 BaseEntity、Swagger 注解等）
+    -->
+    <dependencies>
+        <!-- 公共模块（BaseEntity、Swagger 注解等） -->
+        <dependency>
+            <groupId>com.xuan</groupId>
+            <artifactId>ON-common</artifactId>
+        </dependency>
+
+        <!-- MyBatis-Plus 注解（@TableName、@TableId 等，PO 需要） -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+        </dependency>
+
+        <!-- Knife4j/OpenAPI 注解（@Schema 等，VO/DTO 需要） -->
+        <dependency>
+            <groupId>com.github.xiaoymin</groupId>
+            <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
+        </dependency>
+
+        <!-- Jakarta Validation 注解（@NotBlank 等，DTO 需要） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+    </dependencies>
+</project>

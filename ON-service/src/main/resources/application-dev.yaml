@@ -1,0 +1,107 @@
+spring:
+  # 序列化
+  jackson:
+    # 时间格式
+    date-format: yyyy-MM-dd HH:mm:ss
+    # 时区
+    time-zone: Asia/Shanghai
+
+  # 数据源配置
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    url: jdbc:mysql://localhost:3306/opusnocturne?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: 1234
+
+    # Druid连接池配置
+    druid:
+      initial-size: 5 #初始连接池大小
+      min-idle: 5 #最小连接池数量
+      max-active: 20 #最大连接池数量
+      max-wait: 60000 #等待连接池中的连接的最大时长,时间单位为毫秒
+      time-between-eviction-runs-millis: 60000 #配置间隔多久才进行一次检测，检测需要关闭的空闲连接，单位是毫秒
+      min-evictable-idle-time-millis: 300000 #连接保持空闲的最大时间，单位是毫秒
+      validation-query: SELECT 1 #配置检测连接是否有效
+      test-while-idle: true #配置检测连接是否有效
+      pool-prepared-statements: true #配置是否缓存preparedStatement
+      # 监控统计
+      stat-view-servlet:
+        enabled: true #是否启用StatViewServlet
+        url-pattern: /druid/* #配置StatViewServlet的访问地址
+        login-username: admin #登录账号
+        login-password: 1234 #登录密码
+      # SQL监控
+      filter:
+        stat:
+          enabled: true #是否启用StatFilter
+          slow-sql-millis: 1000 #慢SQL记录时间
+          log-slow-sql: true #慢SQL记录
+
+  # Redis 配置
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: 123456
+      database: 4
+      timeout: 5000ms
+  
+  # 邮件配置
+  mail:
+    host: smtp.qq.com
+    port: 465
+    username: your-email@qq.com
+    password: your-auth-code
+    protocol: smtps
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          ssl:
+            enable: true
+  
+  # 文件上传配置
+  servlet:
+    multipart:
+      enabled: true                    # 启用文件上传
+      max-file-size: 10MB              # 单个文件最大大小
+      max-request-size: 10MB           # 整个请求最大大小
+      file-size-threshold: 2KB         # 文件大小阈值，超过则写入临时文件
+      location: ./temp                 # 临时文件存储位置
+
+# MyBatis-Plus 配置
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml #扫描的mapper文件
+  # 全局配置
+  configuration:
+    map-underscore-to-camel-case: true #驼峰命名
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl #输出SQL
+    # 数据库字段映射
+  global-config:
+    db-config:
+      id-type: auto # 主键自增
+      logic-delete-field: isDelete #逻辑删除字段
+      logic-delete-value: 1 #逻辑删除字段值
+      logic-not-delete-value: 0 #逻辑未删除字段值
+
+# JWT 配置
+jwt:
+  secret: opusnocturne_jwt_secret_key_2026
+  expiration: 86400 # 过期时间（秒），默认1天
+  header: Authorization # 请求头名称
+  token-prefix: Bearer # token前缀
+
+logging:
+  level:
+    root: info
+    com.xuan: debug
+  file:
+    name: log/opusnocturne.log
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB
+      max-history: 30
