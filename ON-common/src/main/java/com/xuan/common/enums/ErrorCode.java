@@ -90,6 +90,8 @@ public enum ErrorCode {
     ARTICLE_CREATE_FAILED(5007, "文章创建失败，请稍后再试"),
     /** 没有选择要删除的文章 */
     ARTICLE_DELETE_EMPTY(5008, "没有选择要删除的文章"),
+    /** 没有选择要删除的分类 */
+    CATEGORY_DELETE_EMPTY(5009, "没有选择要删除的分类"),
 
     // ==================== 评论相关错误码 6xxx ====================
 
