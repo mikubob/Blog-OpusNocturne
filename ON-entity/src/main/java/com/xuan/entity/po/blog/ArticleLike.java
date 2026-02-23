@@ -28,17 +28,22 @@ import java.time.LocalDateTime;
 public class ArticleLike {
 
     @TableId(type = IdType.AUTO)
+    @Schema(description = "文章点赞ID")
     private Long id;
 
     /** 文章ID */
+    @Schema(description = "文章ID")
     private Long articleId;
 
     /** 点赞人IP */
+    @Schema(description = "点赞人IP")
     private String ipAddress;
 
     /** 点赞人ID (登录用户) */
+    @Schema(description = "点赞人ID (登录用户)")
     private Long userId;
 
     /** 点赞时间 */
+    @Schema(description = "点赞时间")
     private LocalDateTime createTime;
 }

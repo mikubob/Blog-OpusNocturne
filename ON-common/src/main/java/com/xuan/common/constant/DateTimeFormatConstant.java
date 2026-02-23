@@ -15,6 +15,8 @@ public final class DateTimeFormatConstant { //将类设置为final，作用是�
     public static final String DATE_PATTERN = "yyyy-MM-dd";
     /** 时间格式 */
     public static final String TIME_PATTERN = "HH:mm:ss";
+    /** 文章归档中月份分类中日期的格式化 */
+    public static final String DAY_FORMAT_PATTERN = "%02d";
 
     // 私有构造函数，防止实例化
     private DateTimeFormatConstant() {}

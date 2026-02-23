@@ -2,19 +2,28 @@ package com.xuan.service.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.xuan.common.constant.DateTimeFormatConstant;
 import com.xuan.common.constant.RedisConstant;
 import com.xuan.common.exceptions.BusinessException;
+import com.xuan.common.utils.DateTimeFormatUtils;
 import com.xuan.entity.dto.article.ArticleAdminPageQueryDTO;
 import com.xuan.entity.dto.article.ArticleCreateDTO;
+import com.xuan.entity.dto.article.ArticlePageQueryDTO;
 import com.xuan.entity.dto.article.ArticleStatusDTO;
 import com.xuan.entity.dto.article.ArticleTopDTO;
 import com.xuan.entity.dto.article.ArticleUpdateDTO;
 import com.xuan.entity.po.blog.Article;
+import com.xuan.entity.po.blog.ArticleLike;
+import com.xuan.entity.vo.article.ArchiveVO;
 import com.xuan.entity.vo.article.ArticleAdminDetailVO;
 import com.xuan.entity.vo.article.ArticleAdminListVO;
 import com.xuan.entity.vo.article.ArticleCreatVO;
+import com.xuan.entity.vo.article.ArticleDetailVO;
+import com.xuan.entity.vo.article.ArticleListVO;
+import com.xuan.service.mapper.ArticleLikeMapper;
 import com.xuan.service.mapper.ArticleMapper;
 import com.xuan.service.service.IArticleService;
 import lombok.RequiredArgsConstructor;
@@ -24,10 +33,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static com.xuan.common.constant.DateTimeFormatConstant.DAY_FORMAT_PATTERN;
 import static com.xuan.common.constant.RedisConstant.ARTICLE_DETAIL_KEY_PREFIX;
+import static com.xuan.common.constant.RedisConstant.ARTICLE_LIKE_COUNT_KEY_PREFIX;
+import static com.xuan.common.constant.RedisConstant.ARTICLE_USER_LIKE_KEY_PREFIX;
 import static com.xuan.common.constant.RedisConstant.ARTICLE_VIEW_KEY_PREFIX;
 import static com.xuan.common.constant.RedisConstant.CATEGORY_LIST_KEY;
 import static com.xuan.common.constant.RedisConstant.TAG_LIST_KEY;
@@ -42,6 +58,7 @@ import static com.xuan.common.enums.ErrorCode.ARTICLE_NOT_FOUND;
 public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> implements IArticleService {
 
     private final StringRedisTemplate redisTemplate;
+    private final ArticleLikeMapper articleLikeMapper;
 
     /**
      * 创建文章
@@ -292,6 +309,212 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     }
 
     /**
+     * 博客文章列表
+     * @param articlePageQueryDTO 查询参数
+     * @return 分页列表
+     */
+    @Override
+    public Page<ArticleListVO> pageBlogArticles(ArticlePageQueryDTO articlePageQueryDTO) {
+        LambdaQueryWrapper<Article> wrapper=new LambdaQueryWrapper<>();
+        //1.查询已发布的文章
+        wrapper.eq(Article::getStatus, PUBLISHED);
+
+        //2.按分类筛选
+        if(articlePageQueryDTO.getCategoryId()!=null){
+            wrapper.eq(Article::getCategoryId, articlePageQueryDTO.getCategoryId());
+        }
+
+        //TODO 3.按标签筛选
+        if(articlePageQueryDTO.getTagId()!=null){
+        }
+
+        //4.先按置顶排序，再按发布时间排序
+        wrapper.orderByDesc(Article::getIsTop).orderByDesc(Article::getPublishTime);
+
+        //5.分页查询
+        //5.1 创建分页对象
+        Page<Article> page = page(new Page<>(articlePageQueryDTO.getCurrent(), articlePageQueryDTO.getSize()), wrapper);
+        Page<ArticleListVO> voPage = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
+        //5.2 将分页对象中的实体类转换为VO类，并且添加实时浏览量，填充分类名称，点赞数，标签名称
+        voPage.setRecords(page.getRecords()
+                .stream()
+                .map(article -> {
+                    ArticleListVO articleListVO = BeanUtil.copyProperties(article, ArticleListVO.class);
+                    //从redis中获取文章的浏览量
+                    articleListVO.setViewCount(getViewCountFromRedis(article.getId(), article.getViewCount()));
+                    //填充点赞数
+                    articleListVO.setLikeCount(article.getLikeCount());
+                    //TODO填充分类名称
+                    //articleListVO.setCategoryName(categoryMapper.selectById(article.getCategoryId()).getName());
+                    //TODO填充标签名称
+                    return articleListVO;
+                }).toList());
+        //6.返回分页列表
+        return voPage;
+    }
+
+    /**
+     * 前台博客文章详情
+     * @param id 文章id
+     * @return 前台文章详情
+     */
+    @Override
+    public ArticleDetailVO getBlogArticleDetail(Long id) {
+        //1.查询文章并做非空判断
+        Article article = getById(id);
+        if (article == null) {
+            throw new BusinessException(ARTICLE_NOT_FOUND);
+        }
+        //2.使用Redis INCR 增加浏览量（使高频操作不直接访问数据库）
+        redisTemplate.opsForValue().increment(ARTICLE_VIEW_KEY_PREFIX + id);
+
+        //3.填充文章详情VO类
+        ArticleDetailVO articleDetailVO = BeanUtil.copyProperties(article, ArticleDetailVO.class);
+        //3.1 设置实时浏览量
+        articleDetailVO.setViewCount(getViewCountFromRedis(id, article.getViewCount()));
+        //3.2 填充点赞数
+        articleDetailVO.setLikeCount(getLikeCountFromRedis(id));
+        //TODO3.3 填充标签名称
+        //TODO3.4 填充分类名称
+        //TODO3.5 填充作者名称
+        //3.6 填充上一篇/下一篇（同为已发布状态）
+        setPrevNextArticle(articleDetailVO,id);
+
+        //4.返回文章详情VO类
+        return articleDetailVO;
+    }
+
+    /**
+     * 文章归档
+     *
+     * @return 文章归档列表（按照年月进行归档）
+     */
+    @Override
+    public List<ArchiveVO> getBlogArticleArchive(){
+        // 1.查询已发布的文章（数据库层面过滤掉空值）
+        List<Article> articles = lambdaQuery()
+                .select(Article::getId, Article::getTitle, Article::getCreateTime)
+                .eq(Article::getStatus, PUBLISHED)
+                .isNotNull(Article::getCreateTime)
+                .orderByDesc(Article::getCreateTime)
+                .list();
+        if (articles.isEmpty()){
+            return Collections.emptyList();
+        }
+
+        //2.创建归档列表
+        List<ArchiveVO> result=new ArrayList<>();
+
+        //状态指针
+        int lastYear=-1;
+        int lastMonth=-1;
+        ArchiveVO currentYearVO=null;
+        ArchiveVO.ArchiveMonthVO currentMonthVO=null;
+
+        //3.遍历文章列表，设置归档列表，按照年、月进行归档
+        for (Article article : articles) {
+            LocalDateTime createTime = article.getCreateTime();
+            int currentYear=createTime.getYear();
+            int currentMonth=createTime.getMonthValue();
+
+            //年份变化 -> 创建新年份节点
+            if (currentYear!=lastYear){
+                currentYearVO=new ArchiveVO();
+                currentYearVO.setYear(String.valueOf(currentYear));
+                currentYearVO.setMonths(new ArrayList<>());
+                result.add(currentYearVO);
+                lastYear=currentYear;
+                lastMonth=-1;// 跨年重置月份
+            }
+
+            //月份变化 -> 创建新月份节点
+            if (currentMonth!=lastMonth){
+                currentMonthVO=new ArchiveVO.ArchiveMonthVO();
+                currentMonthVO.setMonth(String.format(DAY_FORMAT_PATTERN, currentMonth));
+                currentMonthVO.setCount(0);
+                currentYearVO.getMonths().add(currentMonthVO);
+                lastMonth=currentMonth;
+            }
+
+            // 组装文章节点
+            ArchiveVO.ArchiveArticleVO archiveArticleVO=new ArchiveVO.ArchiveArticleVO();
+            archiveArticleVO.setId(article.getId());
+            archiveArticleVO.setTitle(article.getTitle());
+            archiveArticleVO.setCreateTime(createTime.format(DateTimeFormatUtils.DATETIME_FORMATTER));
+            archiveArticleVO.setDay(String.format(DAY_FORMAT_PATTERN, createTime.getDayOfMonth()));
+
+            // 添加文章节点
+            currentMonthVO.getArticles().add(archiveArticleVO);
+            currentMonthVO.setCount(currentMonthVO.getCount()+1);
+        }
+
+        //4.返回归档列表
+        return result;
+    }
+
+    /**
+     * 文章点赞
+     * @param id 文章id
+     * @return 点赞数
+     */
+    @Override
+    @Transactional
+    public Long likeArticle(Long id,String ip) {
+        //1.查询文章看是否存在和发布
+        Article article = lambdaQuery()
+                .select(Article::getId, Article::getStatus)
+                .eq(Article::getId, id)
+                .one();
+        if (article==null || !article.getStatus().equals(PUBLISHED)){
+            throw new BusinessException(ARTICLE_NOT_FOUND);
+        }
+
+        // 2.检查是否重复点赞（先查redis，再查数据库）
+        String userKey=ARTICLE_USER_LIKE_KEY_PREFIX+id;
+        if(Boolean.TRUE.equals(redisTemplate.hasKey(userKey))){
+            throw new BusinessException("您已经点过赞了");
+        }
+
+        // 3.二次检查DB防止redis过期后的重复点赞
+        Long count = articleLikeMapper.selectCount(new LambdaQueryWrapper<ArticleLike>()
+                .eq(ArticleLike::getArticleId, id)
+                .eq(ArticleLike::getIpAddress, ip));
+        if(count>0){
+            // 同步回Redis防止后续请求穿透到DB
+            redisTemplate.opsForValue().set(userKey, "1",24, TimeUnit.HOURS);
+            throw new BusinessException("您已经点过赞了");
+        }
+
+        //4.记录点赞流水（持久化）
+        ArticleLike articleLike = ArticleLike.builder()
+                .articleId(id)
+                .ipAddress(ip)
+                .createTime(LocalDateTime.now())
+                .build();
+        articleLikeMapper.insert(articleLike);
+
+        //5.更新文章表点赞总数（DB+1）
+        boolean success = update(new LambdaUpdateWrapper<Article>()
+                .setSql("like_count=like_count+1")
+                .eq(Article::getId, id));
+        if (!success){
+            throw new BusinessException("点赞失败");
+        }
+
+        //6.更新计数缓存（Redis+1）
+        String countKey = redisTemplate.opsForValue().get(ARTICLE_LIKE_COUNT_KEY_PREFIX+id);
+        Long newCount;
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(countKey))){
+            newCount=redisTemplate.opsForValue().increment(countKey);
+        }else{
+            //RedisKey不存在，回填并过期
+            newCount=getLikeCountFromRedis(id);
+        }
+        //7.返回点赞数
+        return newCount;
+    }
+
+    /**
      * 从Redis中获取文章实时的浏览量
      * 其中Redis中储存的是增量计数，需要加上数据库中存储的浏览量
      * @param ArticleId 文章id
@@ -320,5 +543,57 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     private void clearCategoryTagCache() {
         redisTemplate.delete(CATEGORY_LIST_KEY);
         redisTemplate.delete(TAG_LIST_KEY);
+    }
+
+    /**
+     * 从 Redis 获取点赞数（优先读 Redis，未命中读 DB 并回填）
+     */
+    private Long getLikeCountFromRedis(Long articleId) {
+        String key = ARTICLE_LIKE_COUNT_KEY_PREFIX + articleId;
+        String val = redisTemplate.opsForValue().get(key);
+        if (val != null) {
+            return Long.parseLong(val);
+        }
+
+        // Redis 未命中，读 DB
+        Article article = this.getById(articleId);
+        Long likeCount = (article != null && article.getLikeCount() != null) ? article.getLikeCount() : 0L;
+
+        // 回填 Redis (24小时过期)
+        redisTemplate.opsForValue().set(key, String.valueOf(likeCount), 24, java.util.concurrent.TimeUnit.HOURS);
+
+        return likeCount;
+    }
+
+    private void setPrevNextArticle(ArticleDetailVO vo,Long CurrentId){
+        // 上一篇：ID小于当前，按ID降序取第一条
+        Article prev = getOne(
+                new LambdaQueryWrapper<Article>()
+                        .eq(Article::getStatus, PUBLISHED) // 已发布
+                        .lt(Article::getId, CurrentId)// 小于当前ID
+                        .select(Article::getId, Article::getTitle)// 只查询ID和标题
+                        .orderByDesc(Article::getId)// 按ID降序
+                        .last("LIMIT 1"));
+        if (prev != null){
+            ArticleDetailVO.ArticleNavVO prevNav = new ArticleDetailVO.ArticleNavVO();// 上一篇
+            prevNav.setId(prev.getId());// ID
+            prevNav.setTitle(prev.getTitle());// 标题
+            vo.setPrevArticle(prevNav);// 设置上一篇
+        }
+
+        // 下一篇：ID大于当前，按ID升序取第一条
+        Article next = getOne(
+                new LambdaQueryWrapper<Article>()
+                        .eq(Article::getStatus, PUBLISHED) // 已发布
+                        .gt(Article::getId, CurrentId)// 大于当前ID
+                        .select(Article::getId, Article::getTitle)// 只查询ID和标题
+                        .orderByAsc(Article::getId)// 按ID升序
+                        .last("LIMIT 1"));
+        if (next != null){
+            ArticleDetailVO.ArticleNavVO nextNav = new ArticleDetailVO.ArticleNavVO();// 下一篇
+            nextNav.setId(next.getId());// ID
+            nextNav.setTitle(next.getTitle());// 标题
+            vo.setNextArticle(nextNav);// 设置下一篇
+        }
     }
 }
