@@ -17,6 +17,8 @@ import com.xuan.entity.dto.article.ArticleTopDTO;
 import com.xuan.entity.dto.article.ArticleUpdateDTO;
 import com.xuan.entity.po.blog.Article;
 import com.xuan.entity.po.blog.ArticleLike;
+import com.xuan.entity.po.blog.ArticleTag;
+import com.xuan.entity.po.blog.Category;
 import com.xuan.entity.vo.article.ArchiveVO;
 import com.xuan.entity.vo.article.ArticleAdminDetailVO;
 import com.xuan.entity.vo.article.ArticleAdminListVO;
@@ -25,6 +27,8 @@ import com.xuan.entity.vo.article.ArticleDetailVO;
 import com.xuan.entity.vo.article.ArticleListVO;
 import com.xuan.service.mapper.ArticleLikeMapper;
 import com.xuan.service.mapper.ArticleMapper;
+import com.xuan.service.mapper.ArticleTagMapper;
+import com.xuan.service.mapper.CategoryMapper;
 import com.xuan.service.service.IArticleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -59,6 +63,8 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
     private final StringRedisTemplate redisTemplate;
     private final ArticleLikeMapper articleLikeMapper;
+    private final ArticleTagMapper articleTagMapper;
+    private final CategoryMapper categoryMapper;
 
     /**
      * 创建文章
@@ -88,8 +94,10 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             throw new BusinessException(ARTICLE_CREATE_FAILED);
         }
 
-        //TODO 2.处理标签关联
-        //TODO 3.清除分类/标签缓存（文章数量发生变化）
+        //2.处理标签关联
+        saveArticleTags(article.getId(), articleCreateDTO.getTagIds());
+        //3.清除分类/标签缓存（文章数量发生变化）
+        clearCategoryTagCache();
 
         //4.返回文章创建VO
         return BeanUtil.copyProperties(article, ArticleCreatVO.class);
@@ -112,7 +120,13 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         //2.转换为VO
         ArticleAdminDetailVO articleAdminDetailVO = BeanUtil.copyProperties(article, ArticleAdminDetailVO.class);
 
-        //TODO3.填充分类名称
+        //3.填充分类名称
+        if (article.getCategoryId() != null){
+            Category category = categoryMapper.selectById(article.getCategoryId());
+            if (category != null){
+                articleAdminDetailVO.setCategoryName(category.getName());
+            }
+        }
         //TODO4.填充标签信息
 
         //5.返回文章详情VO
@@ -156,7 +170,13 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                     ArticleAdminListVO articleAdminListVO = BeanUtil.copyProperties(article, ArticleAdminListVO.class);//转换为VO
                     // 从Redis中获取实时浏览量
                     articleAdminListVO.setViewCount(getViewCountFromRedis(article.getId(),article.getViewCount()));
-                    //TODO填充分类名称
+                    //填充分类名称
+                    if (article.getCategoryId() != null){
+                        Category category = categoryMapper.selectById(article.getCategoryId());
+                        if (category != null){
+                            articleAdminListVO.setCategoryName(category.getName());
+                        }
+                    }
                     //TODO填充作者昵称
                     return articleAdminListVO;
                 }).collect(Collectors.toList())
@@ -250,10 +270,11 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                     .collect(Collectors.joining(","))+"】不存在或者已被删除");
         }
 
-        //TODO4.批量删除文章及其关联的标签
+        //4.批量删除文章及其关联的标签
         removeBatchByIds(ids);
         for (Long id : ids) {
-            //TODO articleTagMapper.deleteByArticleId(id);
+
+            articleTagMapper.deleteByArticleId(id);
 
             //清除文章详情缓存
             clearArticleDetailCache(id);
@@ -324,8 +345,19 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             wrapper.eq(Article::getCategoryId, articlePageQueryDTO.getCategoryId());
         }
 
-        //TODO 3.按标签筛选
+        //3.按标签筛选
         if(articlePageQueryDTO.getTagId()!=null){
+            List<Long> articleIds = articleTagMapper.selectList(
+                            new LambdaQueryWrapper<ArticleTag>()
+                                    .eq(ArticleTag::getTagId, articlePageQueryDTO.getTagId()))
+                    .stream()
+                    .map(ArticleTag::getArticleId)
+                    .toList();
+            if (articleIds.isEmpty()){
+                return new Page<>(articlePageQueryDTO.getCurrent(), articlePageQueryDTO.getSize(), 0);
+            }
+            wrapper.in(Article::getId, articleIds);
+
         }
 
         //4.先按置顶排序，再按发布时间排序
@@ -344,9 +376,18 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                     articleListVO.setViewCount(getViewCountFromRedis(article.getId(), article.getViewCount()));
                     //填充点赞数
                     articleListVO.setLikeCount(article.getLikeCount());
-                    //TODO填充分类名称
-                    //articleListVO.setCategoryName(categoryMapper.selectById(article.getCategoryId()).getName());
-                    //TODO填充标签名称
+                    //填充分类名称
+                    if (article.getCategoryId() != null){
+                        Category category = categoryMapper.selectById(article.getCategoryId());
+                        if (category != null){
+                            articleListVO.setCategoryName(category.getName());
+                        }
+                    }
+                    //填充标签名称
+                    List<Long> tagIds = articleTagMapper.selectTagIdsByArticleId(article.getId());
+                    if(!tagIds.isEmpty()){
+                        //TODO 待完善
+                    }
                     return articleListVO;
                 }).toList());
         //6.返回分页列表
@@ -374,8 +415,14 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         articleDetailVO.setViewCount(getViewCountFromRedis(id, article.getViewCount()));
         //3.2 填充点赞数
         articleDetailVO.setLikeCount(getLikeCountFromRedis(id));
-        //TODO3.3 填充标签名称
-        //TODO3.4 填充分类名称
+        //TODO3.3 填充标签
+        //3.4 填充分类名称
+        if (article.getCategoryId() != null){
+            Category category = categoryMapper.selectById(article.getCategoryId());
+            if (category != null){
+                articleDetailVO.setCategoryName(category.getName());
+            }
+        }
         //TODO3.5 填充作者名称
         //3.6 填充上一篇/下一篇（同为已发布状态）
         setPrevNextArticle(articleDetailVO,id);
@@ -512,6 +559,29 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         }
         //7.返回点赞数
         return newCount;
+    }
+
+
+    // ==================== 私有辅助方法 ====================
+
+    /**
+     * 保存文章标签关联
+     */
+
+    private void saveArticleTags(Long articleId,List<Long> tagIds){
+        if (tagIds!=null && !tagIds.isEmpty()){
+            //1.创建文章标签关联
+            LocalDateTime now = LocalDateTime.now();//提前获取时间，保证所有记录时间一致，且避免在流中重复调用
+            List<ArticleTag> articleTags = tagIds.stream().map(
+                            tagId -> ArticleTag.builder()
+                                    .articleId(articleId)
+                                    .tagId(tagId)
+                                    .createTime(now)
+                                    .build())
+                    .toList();
+            //2.保存文章标签关联
+            articleTagMapper.batchInsertArticleTags(articleTags);
+        }
     }
 
     /**

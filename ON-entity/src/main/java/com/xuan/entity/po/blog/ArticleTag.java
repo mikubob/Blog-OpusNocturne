@@ -2,6 +2,7 @@ package com.xuan.entity.po.blog;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Builder;
 import lombok.Data;
 
 import java.io.Serial;
@@ -18,6 +19,7 @@ import java.time.LocalDateTime;
 @Data
 @TableName("article_tag")
 @Schema(description = "文章-标签关联表实体类")
+@Builder
 public class ArticleTag implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
