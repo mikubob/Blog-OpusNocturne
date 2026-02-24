@@ -164,7 +164,8 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
         }
         //2.判断更新后的分类名称是否被使用
         long count = count(new LambdaQueryWrapper<Category>()
-                .eq(Category::getName, updateDTO.getName()));
+                .eq(Category::getName, updateDTO.getName())
+                .ne(Category::getId, id));
         if (count>0){
             throw new BusinessException(CATEGORY_EXISTS);
         }

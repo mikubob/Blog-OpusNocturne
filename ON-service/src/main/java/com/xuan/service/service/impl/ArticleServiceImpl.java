@@ -364,10 +364,13 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         wrapper.orderByDesc(Article::getIsTop).orderByDesc(Article::getPublishTime);
 
         //5.分页查询
-        //5.1 创建分页对象
-        Page<Article> page = page(new Page<>(articlePageQueryDTO.getCurrent(), articlePageQueryDTO.getSize()), wrapper);
+        //5.1 确保分页参数部位null，提供默认值
+        int current=articlePageQueryDTO.getCurrent()!=null?articlePageQueryDTO.getCurrent():1;
+        int size=articlePageQueryDTO.getSize()!=null?articlePageQueryDTO.getSize():10;
+        //5.2 创建分页对象
+        Page<Article> page = page(new Page<>(current,size), wrapper);
         Page<ArticleListVO> voPage = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
-        //5.2 将分页对象中的实体类转换为VO类，并且添加实时浏览量，填充分类名称，点赞数，标签名称
+        //5.3 将分页对象中的实体类转换为VO类，并且添加实时浏览量，填充分类名称，点赞数，标签名称
         voPage.setRecords(page.getRecords()
                 .stream()
                 .map(article -> {
