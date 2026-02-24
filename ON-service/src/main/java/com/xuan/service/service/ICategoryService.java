@@ -7,6 +7,7 @@ import com.xuan.entity.dto.category.CategoryPageQueryDTO;
 import com.xuan.entity.dto.category.CategoryUpdateDTO;
 import com.xuan.entity.po.blog.Category;
 import com.xuan.entity.vo.category.CategoryAdminListVO;
+import com.xuan.entity.vo.category.CategoryVO;
 
 import java.util.List;
 
@@ -16,7 +17,7 @@ import java.util.List;
 public interface ICategoryService extends IService<Category> {
 
     /** 前台：获取所有启用分类（含文章数量） */
-    //List<CategoryVO> listAllCategories();
+    List<CategoryVO> listAllCategories();
 
     /** 后台：分页查询分类列表 */
     Page<CategoryAdminListVO> pageCategories(CategoryPageQueryDTO queryDTO);
@@ -32,4 +33,5 @@ public interface ICategoryService extends IService<Category> {
 
     /** 后台：批量删除分类 */
     void batchDeleteCategories(List<Long> ids);
+
 }

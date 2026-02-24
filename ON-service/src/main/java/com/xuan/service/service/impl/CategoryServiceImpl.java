@@ -2,6 +2,8 @@ package com.xuan.service.service.impl;
 
 
 import cn.hutool.core.bean.BeanUtil;
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.TypeReference;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -13,6 +15,7 @@ import com.xuan.entity.dto.category.CategoryUpdateDTO;
 import com.xuan.entity.po.blog.Article;
 import com.xuan.entity.po.blog.Category;
 import com.xuan.entity.vo.category.CategoryAdminListVO;
+import com.xuan.entity.vo.category.CategoryVO;
 import com.xuan.service.mapper.ArticleMapper;
 import com.xuan.service.mapper.CategoryMapper;
 import com.xuan.service.service.ICategoryService;
@@ -22,12 +25,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static com.xuan.common.constant.RedisConstant.CATEGORY_LIST_KEY;
+import static com.xuan.common.constant.RedisConstant.CATEGORY_TAG_TTL_HOURS;
+import static com.xuan.common.enums.ArticleStatusEnum.PUBLISHED;
 import static com.xuan.common.enums.ErrorCode.CATEGORY_DELETE_EMPTY;
 import static com.xuan.common.enums.ErrorCode.CATEGORY_EXISTS;
 import static com.xuan.common.enums.ErrorCode.CATEGORY_HAS_ARTICLES;
 import static com.xuan.common.enums.ErrorCode.CATEGORY_NOT_FOUND;
+import static io.lettuce.core.protocol.CommandType.PUBLISH;
 
 /**
  * 分类服务实现类
@@ -44,6 +51,42 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
     private final ArticleMapper articleMapper;
     private final StringRedisTemplate redisTemplate;
 
+    /**
+     * 前台获取所有分类
+     * @return 所有分类的列表
+     */
+
+    @Override
+    public List<CategoryVO> listAllCategories() {
+        //1.尝试用Redis中读取缓存
+        String cached = redisTemplate.opsForValue().get(CATEGORY_LIST_KEY);
+        if (cached!=null){
+            return JSON.parseObject(cached, new TypeReference<List<CategoryVO>>() {});
+        }
+
+        //2.缓存未命中，查询数据库
+        List<Category> categories = list(new LambdaQueryWrapper<Category>()
+                .eq(Category::getStatus, PUBLISHED)
+                .orderByAsc(Category::getSort));
+        List<CategoryVO> voList = categories.stream().map(category -> {
+            CategoryVO categoryVO = new CategoryVO();
+            categoryVO.setId(category.getId());
+            categoryVO.setName(category.getName());
+            //统计该分类下已发布的文章数量
+            Long count = articleMapper.selectCount(
+                    new LambdaQueryWrapper<Article>()
+                            .eq(Article::getCategoryId, category.getId())
+                            .eq(Article::getStatus, PUBLISHED));
+            categoryVO.setArticleCount(count.intValue());
+            return categoryVO;
+        }).toList();
+
+        //3.回填缓存
+        redisTemplate.opsForValue().set(CATEGORY_LIST_KEY, JSON.toJSONString(voList),CATEGORY_TAG_TTL_HOURS, TimeUnit.HOURS);
+
+        //4.返回
+        return voList;
+    }
 
     /**
      * 后台分类列表
