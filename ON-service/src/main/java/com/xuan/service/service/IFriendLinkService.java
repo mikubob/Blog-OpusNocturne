@@ -3,6 +3,7 @@ package com.xuan.service.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.xuan.entity.dto.friendLink.FriendLinkApplyAndUpdateDTO;
 import com.xuan.entity.dto.friendLink.FriendLinkAuditDTO;
 import com.xuan.entity.dto.friendLink.FriendLinkPageQueryDTO;
 import com.xuan.entity.po.interact.FriendLink;
@@ -29,4 +30,16 @@ public interface IFriendLinkService extends IService<FriendLink> {
      * @param dto 审核参数
      */
     void auditFriendLink(Long id, FriendLinkAuditDTO dto);
+
+    /**
+     * 申请友情链接
+     * @param dto 申请参数
+     */
+    void applyFriendLink(FriendLinkApplyAndUpdateDTO dto);
+
+    /**
+     * 获取公开友情链接列表
+     * @return 公开友情链接列表
+     */
+    List<FriendLink> listPublicFriendLinks();
 }

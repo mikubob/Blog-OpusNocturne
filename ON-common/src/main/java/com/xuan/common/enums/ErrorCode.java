@@ -117,7 +117,9 @@ public enum ErrorCode {
 
     // ==================== 友链相关错误码 8xxx ====================
     /** 该友链不存在 */
-    FRIEND_LINK_NOT_FOUND(8001, "该友链不存在");
+    FRIEND_LINK_NOT_FOUND(8001, "该友链不存在"),
+    /** 该链接已申请过,请勿重复申请 */
+    FRIEND_LINK_ALREADY_APPLIED(8002, "该链接已申请过,请勿重复申请");
 
     /**
      * 错误码
