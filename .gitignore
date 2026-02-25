@@ -2,7 +2,8 @@
 # Maven 构建输出目录
 target/
 !**/src/main/**/target/
-!**/src/test/**/target/
+!**/src/
+test/**/target/
 
 # Maven 本地仓库（如果在项目内）
 .m2/repository/

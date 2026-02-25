@@ -44,6 +44,6 @@ public class SysUserRole implements Serializable {
     /**
      * 创建时间
      */
-    @Schema(description = "创建时间", example = "2026-02-17T10:00:00")
+    @Schema(description = "创建时间", example = "2026-02-17 10:00:00")
     private LocalDateTime createTime;
 }
