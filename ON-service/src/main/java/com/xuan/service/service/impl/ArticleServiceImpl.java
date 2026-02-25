@@ -20,6 +20,7 @@ import com.xuan.entity.po.blog.ArticleLike;
 import com.xuan.entity.po.blog.ArticleTag;
 import com.xuan.entity.po.blog.Category;
 import com.xuan.entity.po.blog.Tag;
+import com.xuan.entity.po.sys.SysUser;
 import com.xuan.entity.vo.article.ArchiveVO;
 import com.xuan.entity.vo.article.ArticleAdminDetailVO;
 import com.xuan.entity.vo.article.ArticleAdminListVO;
@@ -31,6 +32,7 @@ import com.xuan.service.mapper.ArticleLikeMapper;
 import com.xuan.service.mapper.ArticleMapper;
 import com.xuan.service.mapper.ArticleTagMapper;
 import com.xuan.service.mapper.CategoryMapper;
+import com.xuan.service.mapper.SysUserMapper;
 import com.xuan.service.mapper.TagMapper;
 import com.xuan.service.service.IArticleService;
 import lombok.RequiredArgsConstructor;
@@ -69,6 +71,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     private final ArticleTagMapper articleTagMapper;
     private final CategoryMapper categoryMapper;
     private final TagMapper tagMapper;
+    private final SysUserMapper sysUserMapper;
 
     /**
      * 创建文章
@@ -125,16 +128,16 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         ArticleAdminDetailVO articleAdminDetailVO = BeanUtil.copyProperties(article, ArticleAdminDetailVO.class);
 
         //3.填充分类名称
-        if (article.getCategoryId() != null){
+        if (article.getCategoryId() != null) {
             Category category = categoryMapper.selectById(article.getCategoryId());
-            if (category != null){
+            if (category != null) {
                 articleAdminDetailVO.setCategoryName(category.getName());
             }
         }
         //4.填充标签信息
         List<Long> tagIds = articleTagMapper.selectTagIdsByArticleId(id);
         articleAdminDetailVO.setTagIds(tagIds);
-        if (tagIds != null && !tagIds.isEmpty()){
+        if (tagIds != null && !tagIds.isEmpty()) {
             List<Tag> tags = tagMapper.selectBatchIds(tagIds);
             articleAdminDetailVO.setTags(tags.stream()
                     .map(this::toTagVO)
@@ -183,15 +186,21 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                 .map(article -> {
                     ArticleAdminListVO articleAdminListVO = BeanUtil.copyProperties(article, ArticleAdminListVO.class);//转换为VO
                     // 从Redis中获取实时浏览量
-                    articleAdminListVO.setViewCount(getViewCountFromRedis(article.getId(),article.getViewCount()));
+                    articleAdminListVO.setViewCount(getViewCountFromRedis(article.getId(), article.getViewCount()));
                     //填充分类名称
-                    if (article.getCategoryId() != null){
+                    if (article.getCategoryId() != null) {
                         Category category = categoryMapper.selectById(article.getCategoryId());
-                        if (category != null){
+                        if (category != null) {
                             articleAdminListVO.setCategoryName(category.getName());
                         }
                     }
-                    //TODO填充作者昵称
+                    //填充作者昵称
+                    if (article.getAuthorId() != null) {
+                        SysUser user = sysUserMapper.selectById(article.getAuthorId());
+                        if (user != null){
+                            articleAdminListVO.setAuthorNickname(user.getNickname());
+                        }
+                    }
                     return articleAdminListVO;
                 }).collect(Collectors.toList())
         );
@@ -214,8 +223,8 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             throw new BusinessException(ARTICLE_NOT_FOUND);
         }
         //2.更新文章基本信息
-        BeanUtil.copyProperties(articleUpdateDTO, article,"id");
-        if (article.getStatus().equals(PUBLISHED)&&article.getPublishTime() == null){
+        BeanUtil.copyProperties(articleUpdateDTO, article, "id");
+        if (article.getStatus().equals(PUBLISHED) && article.getPublishTime() == null) {
             article.setPublishTime(LocalDateTime.now());
         }
         updateById(article);
@@ -261,7 +270,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
      */
     @Override
     @Transactional
-    public void batchDeleteArticle(List<Long>ids) {
+    public void batchDeleteArticle(List<Long> ids) {
         //1.判断ids是否为空
         if (ids == null || ids.isEmpty()) {
             throw new BusinessException(ARTICLE_DELETE_EMPTY);
@@ -272,18 +281,18 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         List<Long> existingIds = articles.stream()
                 .map(Article::getId)
                 .toList();
-        if (existingIds.isEmpty()){
+        if (existingIds.isEmpty()) {
             throw new BusinessException(ARTICLE_NOT_FOUND);
         }
 
         //3.找出不存在的文章id
         List<Long> notExistingIds = ids.stream()
-                .filter(id->!existingIds.contains(id))
+                .filter(id -> !existingIds.contains(id))
                 .toList();
-        if (!notExistingIds.isEmpty()){
-            throw new BusinessException("文章【"+notExistingIds.stream()
+        if (!notExistingIds.isEmpty()) {
+            throw new BusinessException("文章【" + notExistingIds.stream()
                     .map(String::valueOf)
-                    .collect(Collectors.joining(","))+"】不存在或者已被删除");
+                    .collect(Collectors.joining(",")) + "】不存在或者已被删除");
         }
 
         //4.批量删除文章及其关联的标签
@@ -337,7 +346,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         //2.更新文章状态
         article.setStatus(articleStatusDTO.getStatus());
         //如果文章状态为发布，则设置发布时间
-        if (article.getStatus().equals(PUBLISHED)&&article.getPublishTime() == null){
+        if (article.getStatus().equals(PUBLISHED) && article.getPublishTime() == null) {
             article.setPublishTime(LocalDateTime.now());
         }
         updateById(article);
@@ -347,29 +356,30 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
     /**
      * 博客文章列表
+     *
      * @param articlePageQueryDTO 查询参数
      * @return 分页列表
      */
     @Override
     public Page<ArticleListVO> pageBlogArticles(ArticlePageQueryDTO articlePageQueryDTO) {
-        LambdaQueryWrapper<Article> wrapper=new LambdaQueryWrapper<>();
+        LambdaQueryWrapper<Article> wrapper = new LambdaQueryWrapper<>();
         //1.查询已发布的文章
         wrapper.eq(Article::getStatus, PUBLISHED);
 
         //2.按分类筛选
-        if(articlePageQueryDTO.getCategoryId()!=null){
+        if (articlePageQueryDTO.getCategoryId() != null) {
             wrapper.eq(Article::getCategoryId, articlePageQueryDTO.getCategoryId());
         }
 
         //3.按标签筛选
-        if(articlePageQueryDTO.getTagId()!=null){
+        if (articlePageQueryDTO.getTagId() != null) {
             List<Long> articleIds = articleTagMapper.selectList(
                             new LambdaQueryWrapper<ArticleTag>()
                                     .eq(ArticleTag::getTagId, articlePageQueryDTO.getTagId()))
                     .stream()
                     .map(ArticleTag::getArticleId)
                     .toList();
-            if (articleIds.isEmpty()){
+            if (articleIds.isEmpty()) {
                 return new Page<>(articlePageQueryDTO.getCurrent(), articlePageQueryDTO.getSize(), 0);
             }
             wrapper.in(Article::getId, articleIds);
@@ -381,10 +391,10 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
         //5.分页查询
         //5.1 确保分页参数部位null，提供默认值
-        int current=articlePageQueryDTO.getCurrent()!=null?articlePageQueryDTO.getCurrent():1;
-        int size=articlePageQueryDTO.getSize()!=null?articlePageQueryDTO.getSize():10;
+        int current = articlePageQueryDTO.getCurrent() != null ? articlePageQueryDTO.getCurrent() : 1;
+        int size = articlePageQueryDTO.getSize() != null ? articlePageQueryDTO.getSize() : 10;
         //5.2 创建分页对象
-        Page<Article> page = page(new Page<>(current,size), wrapper);
+        Page<Article> page = page(new Page<>(current, size), wrapper);
         Page<ArticleListVO> voPage = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
         //5.3 将分页对象中的实体类转换为VO类，并且添加实时浏览量，填充分类名称，点赞数，标签名称
         voPage.setRecords(page.getRecords()
@@ -396,15 +406,15 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                     //填充点赞数
                     articleListVO.setLikeCount(article.getLikeCount());
                     //填充分类名称
-                    if (article.getCategoryId() != null){
+                    if (article.getCategoryId() != null) {
                         Category category = categoryMapper.selectById(article.getCategoryId());
-                        if (category != null){
+                        if (category != null) {
                             articleListVO.setCategoryName(category.getName());
                         }
                     }
                     //填充标签名称
                     List<Long> tagIds = articleTagMapper.selectTagIdsByArticleId(article.getId());
-                    if(!tagIds.isEmpty()){
+                    if (!tagIds.isEmpty()) {
                         List<Tag> tags = tagMapper.selectBatchIds(tagIds);
                         articleListVO.setTags(tags.stream()
                                 .map(this::toTagVO)
@@ -420,6 +430,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
     /**
      * 前台博客文章详情
+     *
      * @param id 文章id
      * @return 前台文章详情
      */
@@ -441,7 +452,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         articleDetailVO.setLikeCount(getLikeCountFromRedis(id));
         //3.3 填充标签
         List<Long> tagIds = articleTagMapper.selectTagIdsByArticleId(id);
-        if(!tagIds.isEmpty()){
+        if (!tagIds.isEmpty()) {
             List<Tag> tags = tagMapper.selectBatchIds(tagIds);
             articleDetailVO.setTags(tags.stream()
                     .map(this::toTagVO)
@@ -450,15 +461,15 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             articleDetailVO.setTags(Collections.emptyList());
         }
         //3.4 填充分类名称
-        if (article.getCategoryId() != null){
+        if (article.getCategoryId() != null) {
             Category category = categoryMapper.selectById(article.getCategoryId());
-            if (category != null){
+            if (category != null) {
                 articleDetailVO.setCategoryName(category.getName());
             }
         }
         //TODO3.5 填充作者名称
         //3.6 填充上一篇/下一篇（同为已发布状态）
-        setPrevNextArticle(articleDetailVO,id);
+        setPrevNextArticle(articleDetailVO, id);
 
         //4.返回文章详情VO类
         return articleDetailVO;
@@ -470,7 +481,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
      * @return 文章归档列表（按照年月进行归档）
      */
     @Override
-    public List<ArchiveVO> getBlogArticleArchive(){
+    public List<ArchiveVO> getBlogArticleArchive() {
         // 1.查询已发布的文章（数据库层面过滤掉空值）
         List<Article> articles = lambdaQuery()
                 .select(Article::getId, Article::getTitle, Article::getCreateTime)
@@ -478,46 +489,46 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                 .isNotNull(Article::getCreateTime)
                 .orderByDesc(Article::getCreateTime)
                 .list();
-        if (articles.isEmpty()){
+        if (articles.isEmpty()) {
             return Collections.emptyList();
         }
 
         //2.创建归档列表
-        List<ArchiveVO> result=new ArrayList<>();
+        List<ArchiveVO> result = new ArrayList<>();
 
         //状态指针
-        int lastYear=-1;
-        int lastMonth=-1;
-        ArchiveVO currentYearVO=null;
-        ArchiveVO.ArchiveMonthVO currentMonthVO=null;
+        int lastYear = -1;
+        int lastMonth = -1;
+        ArchiveVO currentYearVO = null;
+        ArchiveVO.ArchiveMonthVO currentMonthVO = null;
 
         //3.遍历文章列表，设置归档列表，按照年、月进行归档
         for (Article article : articles) {
             LocalDateTime createTime = article.getCreateTime();
-            int currentYear=createTime.getYear();
-            int currentMonth=createTime.getMonthValue();
+            int currentYear = createTime.getYear();
+            int currentMonth = createTime.getMonthValue();
 
             //年份变化 -> 创建新年份节点
-            if (currentYear!=lastYear){
-                currentYearVO=new ArchiveVO();
+            if (currentYear != lastYear) {
+                currentYearVO = new ArchiveVO();
                 currentYearVO.setYear(String.valueOf(currentYear));
                 currentYearVO.setMonths(new ArrayList<>());
                 result.add(currentYearVO);
-                lastYear=currentYear;
-                lastMonth=-1;// 跨年重置月份
+                lastYear = currentYear;
+                lastMonth = -1;// 跨年重置月份
             }
 
             //月份变化 -> 创建新月份节点
-            if (currentMonth!=lastMonth){
-                currentMonthVO=new ArchiveVO.ArchiveMonthVO();
+            if (currentMonth != lastMonth) {
+                currentMonthVO = new ArchiveVO.ArchiveMonthVO();
                 currentMonthVO.setMonth(String.format(DAY_FORMAT_PATTERN, currentMonth));
                 currentMonthVO.setCount(0);
                 currentYearVO.getMonths().add(currentMonthVO);
-                lastMonth=currentMonth;
+                lastMonth = currentMonth;
             }
 
             // 组装文章节点
-            ArchiveVO.ArchiveArticleVO archiveArticleVO=new ArchiveVO.ArchiveArticleVO();
+            ArchiveVO.ArchiveArticleVO archiveArticleVO = new ArchiveVO.ArchiveArticleVO();
             archiveArticleVO.setId(article.getId());
             archiveArticleVO.setTitle(article.getTitle());
             archiveArticleVO.setCreateTime(createTime.format(DateTimeFormatUtils.DATETIME_FORMATTER));
@@ -525,7 +536,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
             // 添加文章节点
             currentMonthVO.getArticles().add(archiveArticleVO);
-            currentMonthVO.setCount(currentMonthVO.getCount()+1);
+            currentMonthVO.setCount(currentMonthVO.getCount() + 1);
         }
 
         //4.返回归档列表
@@ -534,24 +545,25 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
     /**
      * 文章点赞
+     *
      * @param id 文章id
      * @return 点赞数
      */
     @Override
     @Transactional
-    public Long likeArticle(Long id,String ip) {
+    public Long likeArticle(Long id, String ip) {
         //1.查询文章看是否存在和发布
         Article article = lambdaQuery()
                 .select(Article::getId, Article::getStatus)
                 .eq(Article::getId, id)
                 .one();
-        if (article==null || !article.getStatus().equals(PUBLISHED)){
+        if (article == null || !article.getStatus().equals(PUBLISHED)) {
             throw new BusinessException(ARTICLE_NOT_FOUND);
         }
 
         // 2.检查是否重复点赞（先查redis，再查数据库）
-        String userKey=ARTICLE_USER_LIKE_KEY_PREFIX+id;
-        if(Boolean.TRUE.equals(redisTemplate.hasKey(userKey))){
+        String userKey = ARTICLE_USER_LIKE_KEY_PREFIX + id;
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(userKey))) {
             throw new BusinessException("您已经点过赞了");
         }
 
@@ -559,9 +571,9 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         Long count = articleLikeMapper.selectCount(new LambdaQueryWrapper<ArticleLike>()
                 .eq(ArticleLike::getArticleId, id)
                 .eq(ArticleLike::getIpAddress, ip));
-        if(count>0){
+        if (count > 0) {
             // 同步回Redis防止后续请求穿透到DB
-            redisTemplate.opsForValue().set(userKey, "1",24, TimeUnit.HOURS);
+            redisTemplate.opsForValue().set(userKey, "1", 24, TimeUnit.HOURS);
             throw new BusinessException("您已经点过赞了");
         }
 
@@ -577,18 +589,18 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         boolean success = update(new LambdaUpdateWrapper<Article>()
                 .setSql("like_count=like_count+1")
                 .eq(Article::getId, id));
-        if (!success){
+        if (!success) {
             throw new BusinessException("点赞失败");
         }
 
         //6.更新计数缓存（Redis+1）
-        String countKey = redisTemplate.opsForValue().get(ARTICLE_LIKE_COUNT_KEY_PREFIX+id);
+        String countKey = redisTemplate.opsForValue().get(ARTICLE_LIKE_COUNT_KEY_PREFIX + id);
         Long newCount;
-        if (Boolean.TRUE.equals(redisTemplate.hasKey(countKey))){
-            newCount=redisTemplate.opsForValue().increment(countKey);
-        }else{
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(countKey))) {
+            newCount = redisTemplate.opsForValue().increment(countKey);
+        } else {
             //RedisKey不存在，回填并过期
-            newCount=getLikeCountFromRedis(id);
+            newCount = getLikeCountFromRedis(id);
         }
         //7.返回点赞数
         return newCount;
@@ -601,8 +613,8 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
      * 保存文章标签关联
      */
 
-    private void saveArticleTags(Long articleId,List<Long> tagIds){
-        if (tagIds!=null && !tagIds.isEmpty()){
+    private void saveArticleTags(Long articleId, List<Long> tagIds) {
+        if (tagIds != null && !tagIds.isEmpty()) {
             //1.创建文章标签关联
             LocalDateTime now = LocalDateTime.now();//提前获取时间，保证所有记录时间一致，且避免在流中重复调用
             List<ArticleTag> articleTags = tagIds.stream().map(
@@ -620,23 +632,24 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     /**
      * 从Redis中获取文章实时的浏览量
      * 其中Redis中储存的是增量计数，需要加上数据库中存储的浏览量
-     * @param ArticleId 文章id
+     *
+     * @param ArticleId   文章id
      * @param dbViewCount 数据库的浏览量
      * @return 实时的浏览量
      */
-    private Long getViewCountFromRedis(Long ArticleId, Long dbViewCount){
-        String viewKey= ARTICLE_VIEW_KEY_PREFIX+ArticleId;//浏览量key
-        String redisVal=redisTemplate.opsForValue().get(viewKey);//从redis中获取浏览量
-        long redisIncrement=(redisVal==null)?0:Long.parseLong(redisVal);//redis中浏览量的增量
-        long dbBase=(dbViewCount==null)?0:dbViewCount;
-        return redisIncrement+dbBase;
+    private Long getViewCountFromRedis(Long ArticleId, Long dbViewCount) {
+        String viewKey = ARTICLE_VIEW_KEY_PREFIX + ArticleId;//浏览量key
+        String redisVal = redisTemplate.opsForValue().get(viewKey);//从redis中获取浏览量
+        long redisIncrement = (redisVal == null) ? 0 : Long.parseLong(redisVal);//redis中浏览量的增量
+        long dbBase = (dbViewCount == null) ? 0 : dbViewCount;
+        return redisIncrement + dbBase;
     }
 
     /**
      * 清除文章详情缓存
      */
-    private void clearArticleDetailCache(Long articleId){
-        String articleDetailKey=ARTICLE_DETAIL_KEY_PREFIX+articleId;
+    private void clearArticleDetailCache(Long articleId) {
+        String articleDetailKey = ARTICLE_DETAIL_KEY_PREFIX + articleId;
         redisTemplate.delete(articleDetailKey);
     }
 
@@ -670,10 +683,11 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
     /**
      * 设置上一篇和下一篇
-     * @param vo 文章详情VO
+     *
+     * @param vo        文章详情VO
      * @param CurrentId 当前文章ID
      */
-    private void setPrevNextArticle(ArticleDetailVO vo,Long CurrentId){
+    private void setPrevNextArticle(ArticleDetailVO vo, Long CurrentId) {
         // 上一篇：ID小于当前，按ID降序取第一条
         Article prev = getOne(
                 new LambdaQueryWrapper<Article>()
@@ -682,7 +696,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                         .select(Article::getId, Article::getTitle)// 只查询ID和标题
                         .orderByDesc(Article::getId)// 按ID降序
                         .last("LIMIT 1"));
-        if (prev != null){
+        if (prev != null) {
             ArticleDetailVO.ArticleNavVO prevNav = new ArticleDetailVO.ArticleNavVO();// 上一篇
             prevNav.setId(prev.getId());// ID
             prevNav.setTitle(prev.getTitle());// 标题
@@ -697,7 +711,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                         .select(Article::getId, Article::getTitle)// 只查询ID和标题
                         .orderByAsc(Article::getId)// 按ID升序
                         .last("LIMIT 1"));
-        if (next != null){
+        if (next != null) {
             ArticleDetailVO.ArticleNavVO nextNav = new ArticleDetailVO.ArticleNavVO();// 下一篇
             nextNav.setId(next.getId());// ID
             nextNav.setTitle(next.getTitle());// 标题
