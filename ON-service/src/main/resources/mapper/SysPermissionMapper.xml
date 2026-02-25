@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xuan.service.mapper.SysPermissionMapper">
+
+    <!-- 根据用户ID查询权限标识码列表（三表联查） -->
+    <select id="selectPermissionCodesByUserId" resultType="java.lang.String">
+        SELECT DISTINCT sp.code
+        FROM sys_permission sp
+                 INNER JOIN sys_role_permission srp ON sp.id = srp.permission_id
+                 INNER JOIN sys_user_role sur ON srp.role_id = sur.role_id
+        WHERE sur.user_id = #{userId}
+          AND sp.status = 1
+          AND sp.is_delete = 0
+    </select>
+
+    <!-- 根据角色ID查询权限ID列表 -->
+    <select id="selectPermissionIdsByRoleId" resultType="java.lang.Long">
+        SELECT permission_id
+        FROM sys_role_permission
+        WHERE role_id = #{roleId}
+    </select>
+
+</mapper>

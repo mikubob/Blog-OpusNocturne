@@ -14,6 +14,7 @@ import com.xuan.entity.po.sys.SysUser;
 import com.xuan.entity.po.sys.SysUserRole;
 import com.xuan.entity.vo.auth.UserInfoVO;
 import com.xuan.entity.vo.user.UserListVO;
+import com.xuan.service.mapper.SysPermissionMapper;
 import com.xuan.service.mapper.SysUserMapper;
 import com.xuan.service.mapper.SysUserRoleMapper;
 import com.xuan.service.service.ISysUserService;
@@ -39,6 +40,7 @@ import static com.xuan.common.enums.ErrorCode.USER_NOT_FOUND;
 public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> implements ISysUserService {
 
     private final SysUserRoleMapper sysUserRoleMapper;
+    private final SysPermissionMapper sysPermissionMapper;
 
     /**
      * 分页获取用户列表
@@ -166,7 +168,9 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         //3.查询角色id列表并保存
         List<Long> roleIds = sysUserRoleMapper.selectRoleIdsByUserId(id);
         userInfoVO.setRoleIds(roleIds);
-        //TODO4.查询权限
+        //4.查询权限
+        List<String> permissions = sysPermissionMapper.selectPermissionCodesByUserId(id);
+        userInfoVO.setPermissions(permissions);
         return userInfoVO;
     }
 
