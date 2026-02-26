@@ -1,6 +1,7 @@
 package com.xuan.entity.vo.auth;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Builder;
 import lombok.Data;
 
 import java.io.Serial;
@@ -17,6 +18,7 @@ import java.util.List;
  * @since 2026-02-16
  */
 @Data
+@Builder
 @Schema(description = "用户信息响应数据类")
 public class UserInfoVO implements Serializable {
 

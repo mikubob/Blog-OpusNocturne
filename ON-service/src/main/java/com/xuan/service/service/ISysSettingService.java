@@ -18,7 +18,4 @@ public interface ISysSettingService extends IService<SysSetting> {
 
     /** 更新系统设置（写 DB + 刷新 Redis 缓存） */
     void updateSettings(SystemSettingDTO dto);
-
-    /** 根据配置键获取配置值 */
-    //String getSettingValue(String key, String defaultValue);
 }
