@@ -16,7 +16,7 @@ import java.util.List;
 public interface ITagService extends IService<Tag> {
 
     /** 前台：获取所有标签（含文章数量） */
-    //List<TagVO> listAllTags();
+    List<TagVO> listAllTags();
 
     /** 后台：分页查询标签列表 */
     Page<TagAdminVO> pageTags(TagPageQueryDTO queryDTO);

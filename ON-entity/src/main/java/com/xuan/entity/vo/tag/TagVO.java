@@ -1,6 +1,7 @@
 package com.xuan.entity.vo.tag;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Builder;
 import lombok.Data;
 
 import java.io.Serial;
@@ -14,6 +15,7 @@ import java.io.Serializable;
  * @since 2026-02-16
  */
 @Data
+@Builder
 @Schema(description = "标签响应数据类")
 public class TagVO implements Serializable {
 

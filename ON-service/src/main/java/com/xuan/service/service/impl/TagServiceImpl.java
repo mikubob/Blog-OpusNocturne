@@ -1,6 +1,8 @@
 package com.xuan.service.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.TypeReference;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -10,6 +12,7 @@ import com.xuan.entity.dto.tag.TagPageQueryDTO;
 import com.xuan.entity.po.blog.ArticleTag;
 import com.xuan.entity.po.blog.Tag;
 import com.xuan.entity.vo.tag.TagAdminVO;
+import com.xuan.entity.vo.tag.TagVO;
 import com.xuan.service.mapper.ArticleTagMapper;
 import com.xuan.service.mapper.TagMapper;
 import com.xuan.service.service.ITagService;
@@ -19,7 +22,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
+import static com.xuan.common.constant.RedisConstant.CATEGORY_TAG_TTL_HOURS;
 import static com.xuan.common.constant.RedisConstant.TAG_LIST_KEY;
 import static com.xuan.common.enums.ErrorCode.CATEGORY_HAS_ARTICLES;
 import static com.xuan.common.enums.ErrorCode.TAG_DELETE_EMPTY;
@@ -39,6 +44,42 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements ITagS
 
     private final StringRedisTemplate redisTemplate;
     private final ArticleTagMapper articleTagMapper;
+
+    /**
+     * 获取所有标签列表（前台，含文章数量）
+     * @return 标签列表
+     */
+    @Override
+    public List<TagVO> listAllTags() {
+        //1.尝试从Redis中读取缓存
+        String cached=redisTemplate.opsForValue().get(TAG_LIST_KEY);
+        if (cached!=null){
+            //缓存命中，直接返回转换后的结果
+            return JSON.parseObject(cached, new TypeReference<List<TagVO>>() {});
+        }
+
+        //2.缓存未命中，查询数据库
+        List<Tag> tags = list(new LambdaQueryWrapper<Tag>().orderByDesc(Tag::getId));
+        List<TagVO> voList = tags.stream().map(tag -> {
+            Long count = articleTagMapper.selectCount(new LambdaQueryWrapper<ArticleTag>()
+                    .eq(ArticleTag::getTagId, tag.getId()));
+            return TagVO.builder()
+                    .id(tag.getId())
+                    .name(tag.getName())
+                    .color(tag.getColor())
+                    .articleCount(count.intValue())
+                    .build();
+        }).toList();
+
+        //3.回填缓存
+        redisTemplate.opsForValue().set(TAG_LIST_KEY,
+                JSON.toJSONString(voList),
+                CATEGORY_TAG_TTL_HOURS,
+                TimeUnit.HOURS);
+
+        //4.返回
+        return voList;
+    }
 
     /**
      * 分页获取标签列表
