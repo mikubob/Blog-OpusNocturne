@@ -83,7 +83,7 @@ public class FriendLinkServiceImpl extends ServiceImpl<FriendLinkMapper, FriendL
         }
         //2.设置友链中参数
         FriendLink friendLink = BeanUtil.copyProperties(dto, FriendLink.class);
-        friendLink.setStatus(PENDING);
+        friendLink.setStatus(PENDING.getCode());
         friendLink.setSort(0);
         save(friendLink);
     }
