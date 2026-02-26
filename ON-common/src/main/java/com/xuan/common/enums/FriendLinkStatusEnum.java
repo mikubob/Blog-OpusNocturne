@@ -19,14 +19,15 @@ public enum FriendLinkStatusEnum {
     // 2-下架
     OFFLINE(2, "下架");
 
-    private final int code;
+    private final Integer code;
     private final String desc;
+
     public static FriendLinkStatusEnum fromCode(int code) {
-        for (FriendLinkStatusEnum value : FriendLinkStatusEnum.values()) {
-            if (value.code == code) {
-                return value;
+        for (FriendLinkStatusEnum status : values()) {
+            if (status.getCode().equals(code)) {
+                return status;
             }
         }
-        return null;
+        throw new IllegalArgumentException("无效的友链审核状态："+code);
     }
 }
