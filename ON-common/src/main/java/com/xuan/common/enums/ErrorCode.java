@@ -91,11 +91,11 @@ public enum ErrorCode {
     /** 文章创建失败，请稍后再试 */
     ARTICLE_CREATE_FAILED(5007, "文章创建失败，请稍后再试"),
     /** 没有选择要删除的文章 */
-    ARTICLE_DELETE_EMPTY(5008, "没有选择要删除的文章"),
+    ARTICLE_DELETE_EMPTY(5008, "请选择要删除的文章"),
     /** 没有选择要删除的分类 */
-    CATEGORY_DELETE_EMPTY(5009, "没有选择要删除的分类"),
+    CATEGORY_DELETE_EMPTY(5009, "请选择要删除的分类"),
     /** 没有选择要删除的标签 */
-    TAG_DELETE_EMPTY(5010, "没有选择要删除的标签"),
+    TAG_DELETE_EMPTY(5010, "请选择要删除的标签"),
 
     // ==================== 评论相关错误码 6xxx ====================
 
@@ -105,6 +105,10 @@ public enum ErrorCode {
     COMMENT_AUDIT_FAILED(6002, "评论审核失败"),
     /** 评论内容不能为空 */
     COMMENT_CONTENT_EMPTY(6003, "评论内容不能为空"),
+    /** 没有选择要删除的评论 */
+    COMMENT_DELETE_EMPTY(6004, "请选择要删除的评论"),
+    /** 没有选择要审核的评论 */
+    COMMENT_AUDIT_EMPTY(6005, "请选择要审核的评论"),
 
     // ==================== 文件相关错误码 7xxx ====================
 
