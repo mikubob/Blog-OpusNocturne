@@ -1484,7 +1484,39 @@ axios.delete('/api/admin/article/batch-delete', {
 | list[].replyNickname | string | 被回复人昵称（顶级评论为 `null`） |
 | list[].children | array | 子评论列表（所有层级子评论均平铺在此，非递归嵌套） |
 
-### 7.2 发表评论 / 留言 (Portal)
+### 7.2 获取文章评论统计 (Portal)
+
+- **接口路径**: `GET /api/blog/comment/stats/{articleId}`
+- **是否认证**: 否
+
+**路径参数**
+
+| 名称 | 示例 | 说明 |
+|:---|:---|:---|
+| articleId | `100` | 文章ID。若为 `0` 则获取留言板的评论统计 |
+
+**成功响应**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": {
+    "total": 128,
+    "approved": 120
+  }
+}
+```
+
+**响应字段说明**
+
+| 字段 | 类型 | 说明 |
+|:---|:---|:---|
+| total | long | 该文章的评论总数（含所有状态） |
+| approved | long | 审核通过的评论数量（状态为 `1` 的评论） |
+
+---
+
+### 7.3 发表评论 / 留言 (Portal)
 
 
 - **接口路径**: `POST /api/blog/comment`
@@ -1525,7 +1557,7 @@ axios.delete('/api/admin/article/batch-delete', {
 
 ---
 
-### 7.3 后台评论管理
+### 7.4 后台评论管理
 
 > **审核流程说明**：
 > 1. **评论提交**：用户提交评论后，系统根据 `commentAudit` 配置自动设置初始状态
@@ -1533,7 +1565,7 @@ axios.delete('/api/admin/article/batch-delete', {
 > 3. **状态更新**：审核通过或拒绝后，评论状态更新，前台根据状态显示或隐藏评论
 > 4. **批量操作**：支持批量审核和删除评论，提高管理效率
 
-#### 7.3.1 分页获取评论列表
+#### 7.4.1 分页获取评论列表
 
 - **接口路径**: `GET /api/admin/comment/page`
 - **是否认证**: 是
@@ -1575,7 +1607,7 @@ axios.delete('/api/admin/article/batch-delete', {
 }
 ```
 
-#### 7.3.2 审核评论
+#### 7.4.2 审核评论
 
 - **接口路径**: `PUT /api/admin/comment/{id}/audit`
 - **是否认证**: 是
@@ -1610,7 +1642,7 @@ axios.delete('/api/admin/article/batch-delete', {
 }
 ```
 
-#### 7.3.3 删除评论
+#### 7.4.3 删除评论
 
 - **接口路径**: `DELETE /api/admin/comment/{id}`
 - **是否认证**: 是
@@ -1630,7 +1662,7 @@ axios.delete('/api/admin/article/batch-delete', {
 }
 ```
 
-#### 7.3.4 批量审核评论
+#### 7.4.4 批量审核评论
 
 - **接口路径**: `PUT /api/admin/comment/batch-audit`
 - **是否认证**: 是
@@ -1668,7 +1700,7 @@ axios.put('/api/admin/comment/batch-audit', {
 }
 ```
 
-#### 7.3.5 批量删除评论
+#### 7.4.5 批量删除评论
 
 - **接口路径**: `DELETE /api/admin/comment/batch-delete`
 - **是否认证**: 是

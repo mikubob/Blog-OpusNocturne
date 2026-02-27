@@ -14,9 +14,11 @@ import com.xuan.entity.po.interact.Comment;
 import com.xuan.entity.vo.comment.CommentAdminVO;
 import com.xuan.entity.vo.comment.CommentPageVO;
 import com.xuan.entity.vo.comment.CommentTreeVO;
+import com.xuan.entity.vo.system.SystemSettingVO;
 import com.xuan.service.mapper.ArticleMapper;
 import com.xuan.service.mapper.CommentMapper;
 import com.xuan.service.service.ICommentService;
+import com.xuan.service.service.ISysSettingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +30,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static com.xuan.common.enums.CommentStatusEnum.APPROVED;
+import static com.xuan.common.enums.CommentStatusEnum.PENDING;
 import static com.xuan.common.enums.ErrorCode.COMMENT_AUDIT_EMPTY;
 import static com.xuan.common.enums.ErrorCode.COMMENT_DELETE_EMPTY;
 import static com.xuan.common.enums.ErrorCode.COMMENT_NOT_FOUND;
@@ -43,6 +46,7 @@ import static com.xuan.common.enums.ErrorCode.COMMENT_NOT_FOUND;
 public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> implements ICommentService {
 
     private final ArticleMapper articleMapper;
+    private final ISysSettingService SysSettingService;
 
     /**
      * 前台：分页获取文章评论树
@@ -97,14 +101,65 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         return new CommentPageVO(rootPage.getTotal(), tree);
     }
 
+    /**
+     * 获取文章评论统计
+     * @param articleId 文章ID
+     * @return 评论统计
+     */
     @Override
     public Map<String, Long> getArticleCommentStats(Long articleId) {
-        return Map.of();
+        //1.获取评论总数
+        Long total = lambdaQuery()
+                .eq(Comment::getArticleId, articleId)
+                .eq(Comment::getStatus, APPROVED)
+                .count();
+        //2.获取一级评论数
+        Long rootCount = lambdaQuery()
+                .eq(Comment::getArticleId, articleId)
+                .eq(Comment::getStatus, APPROVED)
+                .isNull(Comment::getRootParentId)
+                .count();
+
+        //3.构建返回结果
+        Map<String, Long> result = new HashMap<>();
+        result.put("total", total!=null?total:0L);
+        result.put("rootCount", rootCount!=null?rootCount:0L);
+        result.put("replyCount",(total!=null?total:0L)-(rootCount!=null?rootCount:0L));
+        return result;
     }
 
+    /**
+     * 前台：创建评论
+     * @param dto 创建参数
+     * @param ipAddress IP地址
+     * @param userAgent 用户代理信息
+     */
     @Override
+    @Transactional
     public void createComment(CommentCreateDTO dto, String ipAddress, String userAgent) {
+        //1.创建评论信息
+        Comment comment = new Comment();
+        comment.setArticleId(dto.getArticleId());
+        comment.setContent(dto.getContent());
+        comment.setNickname(dto.getNickname());
+        comment.setEmail(dto.getEmail());
+        comment.setParentId(dto.getParentId());
+        comment.setRootParentId(dto.getRootParentId());
+        comment.setIpAddress(ipAddress);
+        comment.setUserAgent(userAgent);
 
+        //2.根据系统设置决定是否需要审核
+        SystemSettingVO settings = SysSettingService.getSettings();
+        boolean needAudit = settings.getCommentAudit();
+        comment.setStatus(needAudit ? PENDING.getCode() : APPROVED.getCode()); // 0-待审核，1-审核通过
+
+        //3.如果有父级评论，则获取被回复人信息
+        if (dto.getParentId() != null) {
+            Comment parent = getById(dto.getParentId());
+            if (parent != null){
+                comment.setReplyUserId(parent.getUserId());
+            }
+        }
     }
 
     /**

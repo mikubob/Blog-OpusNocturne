@@ -12,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 /**
  * 前台评论控制器
  */
@@ -43,7 +45,7 @@ public class CommentController {
 
     @Operation(summary = "获取文章评论统计")
     @GetMapping("/stats/{articleId}")
-    public Result<java.util.Map<String, Long>> getCommentStats(@PathVariable Long articleId) {
+    public Result<Map<String, Long>> getCommentStats(@PathVariable Long articleId) {
         return Result.success(commentService.getArticleCommentStats(articleId));
     }
 
@@ -51,7 +53,7 @@ public class CommentController {
     @PostMapping
     public Result<Void> createComment(@Validated @RequestBody CommentCreateDTO dto, HttpServletRequest request) {
         String ip = request.getRemoteAddr();
-        String userAgent = request.getHeader("User-Agent");
+        String userAgent = request.getHeader("User-Agent");// 获取用户代理信息
         commentService.createComment(dto, ip, userAgent);
         return Result.success();
     }
