@@ -2,6 +2,7 @@ package com.xuan.entity.po.sys;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Builder;
 import lombok.Data;
 
 import java.io.Serial;
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
  * @since 2026-02-16
  */
 @Data
+@Builder
 @TableName("sys_role_permission")
 @Schema(description = "角色-权限关联表实体类")
 public class SysRolePermission implements Serializable {
