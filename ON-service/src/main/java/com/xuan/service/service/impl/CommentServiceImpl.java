@@ -287,9 +287,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
      * 仅负责将已分好页、数量可控的两批数据（顶级评论 + 其下的子评论）组装成树形 VO，纯内存操作。
      * 所有数据库查询和分页逻辑均由调用方 getCommentTree 完成。
      * <p>
-     * 【与旧版区别】
-     * 旧版：接收全量评论列表，全量加载到内存（几万条数据时会 OOM）。
-     * 新版：接收已分页的顶级评论 + 已用 IN 批量查出的子评论，内存占用可控。
+     * 接收已分页的顶级评论 + 已用 IN 批量查出的子评论，内存占用可控。
      * <p>
      * 【时间复杂度】O(N)，N = 顶级评论数 + 子评论数之和。
      *

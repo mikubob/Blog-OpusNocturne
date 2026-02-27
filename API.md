@@ -2453,7 +2453,58 @@ axios.post('/api/admin/upload', formData, {
 
 ## 16. 多媒体管理 (Media - Admin)
 
-### 16.1 分页获取附件列表 (Admin)
+### 16.1 上传文件 (Admin)
+
+- **接口路径**: `POST /api/admin/attachment/upload`
+- **是否认证**: 是
+- **Content-Type**: `multipart/form-data`
+
+**请求参数**
+
+| 名称 | 类型 | 必填 | 说明 |
+|:---|:---|:---|:---|
+| file | file | 是 | 上传的文件 |
+| bizType | string | 否 | 业务类型，如 `article`、`avatar`，用于分类归档 |
+| bizId | long | 否 | 业务关联ID，如文章ID |
+
+**成功响应**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": {
+    "id": 1,
+    "fileName": "cover.png",
+    "fileUrl": "http://localhost:8080/uploads/2026/02/27/cover.png",
+    "filePath": "/uploads/2026/02/27/cover.png",
+    "fileType": "image/png",
+    "fileSize": 102400,
+    "bizType": "article",
+    "bizId": 100,
+    "createTime": "2026-02-27 10:00:00"
+  }
+}
+```
+
+**字段说明**
+
+| 字段名 | 类型 | 说明 |
+|:---|:---|:---|
+| id | long | 附件ID |
+| fileName | string | 原始文件名 |
+| fileUrl | string | 文件访问 URL（前端直接使用此地址渲染） |
+| filePath | string | 服务器存储路径（内部使用，用于物理删除） |
+| fileType | string | MIME 类型，如 `image/png`、`video/mp4` |
+| fileSize | long | 文件大小（字节） |
+| bizType | string | 业务类型标识，如 `article`（文章封面）、`avatar`（用户头像） |
+| bizId | long | 关联的业务记录ID |
+| createTime | string | 上传时间 |
+
+> ⚠️ **注意**：上传成功后，前端应将返回的 `fileUrl` 填入对应的文章封面、内容图片等字段，而非 `filePath`。
+
+---
+
+### 16.2 分页获取附件列表 (Admin)
 
 - **接口路径**: `GET /api/admin/attachment/page`
 - **是否认证**: 是
@@ -2462,10 +2513,10 @@ axios.post('/api/admin/upload', formData, {
 
 | 名称 | 类型 | 必填 | 示例 | 说明 |
 |:---|:---|:---|:---|:---|
-| current | int | 否 | `1` | 页码 |
-| size | int | 否 | `10` | 每页条数 |
-| fileName | string | 否 | `logo` | 文件名搜索 |
-| fileType | string | 否 | `image/png` | 文件类型 |
+| current | int | 否 | `1` | 页码，默认 `1` |
+| size | int | 否 | `10` | 每页条数，默认 `10` |
+| fileName | string | 否 | `logo` | 文件名模糊搜索 |
+| fileType | string | 否 | `image/png` | 文件 MIME 类型精确匹配 |
 
 **成功响应**
 ```json
@@ -2476,25 +2527,33 @@ axios.post('/api/admin/upload', formData, {
     "records": [
       {
         "id": 1,
-        "fileName": "logo.png",
-        "fileUrl": "http://localhost:8080/uploads/2023/10/logo.png",
+        "fileName": "cover.png",
+        "fileUrl": "http://localhost:8080/uploads/2026/02/27/cover.png",
+        "filePath": "/uploads/2026/02/27/cover.png",
         "fileType": "image/png",
-        "fileSize": 10240,
-        "createTime": "2023-10-01 10:00:00"
+        "fileSize": 102400,
+        "bizType": "article",
+        "bizId": 100,
+        "createTime": "2026-02-27 10:00:00"
       }
     ],
     "total": 1,
     "size": 10,
-    "current": 1
+    "current": 1,
+    "pages": 1
   }
 }
 ```
 
-### 16.2 删除附件 (Admin)
+> 💡 **说明**：结果按 `createTime` 倒序（最新上传排在前）。
+
+---
+
+### 16.3 删除附件 (Admin)
 
 - **接口路径**: `DELETE /api/admin/attachment/{id}`
 - **是否认证**: 是
-- **说明**:同时删除数据库记录和物理文件。
+- **说明**: 删除数据库记录；若后端接入对象存储/本地存储，同时清理物理文件。
 
 **路径参数**
 
@@ -2506,10 +2565,48 @@ axios.post('/api/admin/upload', formData, {
 ```json
 {
   "code": 0,
-  "message": "删除成功",
+  "message": "操作成功",
   "data": null
 }
 ```
+
+**失败响应**
+
+| 场景 | HTTP 状态码 | code | message |
+|:---|:---|:---|:---|
+| 附件不存在 | 400 | 400 | 附件不存在 |
+| 未登录 | 401 | 401 | 未登录或 Token 已过期 |
+
+---
+
+### 16.4 批量删除附件 (Admin)
+
+- **接口路径**: `DELETE /api/admin/attachment/batch`
+- **是否认证**: 是
+- **说明**: 按 ID 列表批量删除附件记录，逐个执行删除与存在性校验。
+
+**请求体 (JSON)**
+
+直接传递附件 ID 数组：
+```json
+[1, 2, 3]
+```
+
+**成功响应**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": null
+}
+```
+
+**失败响应**
+
+| 场景 | HTTP 状态码 | code | message |
+|:---|:---|:---|:---|
+| 某个 ID 不存在 | 400 | 400 | 附件不存在 |
+| 未登录 | 401 | 401 | 未登录或 Token 已过期 |
 
 ---
 
@@ -2732,6 +2829,7 @@ axios.post('/api/admin/upload', formData, {
 
 | 版本号 | 日期 | 变更人 | 变更摘要 | 兼容级别 |
 |:---:|:---:|:---:|:---|:---|
+| **2.2.0** | 2026-02-27 | Admin | 重构第16节多媒体管理：新增上传(16.1)、批量删除(16.4)接口；补全附件字段说明、bizType/bizId 说明及失败响应；接口编号整体顺移 | Compatible |
 | **2.1.0** | 2026-02-20 | Admin | 统一时间格式约定、补充 likeCount/aboutMe 字段、完善关于我接口文档、增加空值处理和时间格式全局约定 | Compatible |
 | **1.1.0** | 2026-02-20 | Admin | 升级为平台级API规范，包含HTTP语义化改造、幂等性与并发控制、数据模型抽象层等 | Breaking |
 | **1.0.0** | 2026-01-01 | Admin | 初始版本 | Compatible |

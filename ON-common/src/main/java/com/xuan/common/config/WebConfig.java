@@ -2,6 +2,7 @@ package com.xuan.common.config;
 
 import com.xuan.common.interceptor.JwtInterceptor;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
@@ -20,6 +21,14 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebConfig implements WebMvcConfigurer {
 
         private final JwtInterceptor jwtInterceptor;
+
+        /** 文件存储根目录（对应 application.yaml 中的 file.upload.path） */
+        @Value("${file.upload.path:./uploads}")
+        private String uploadPath;
+
+        /** 文件访问URL前缀（对应 application.yaml 中的 file.upload.url-prefix） */
+        @Value("${file.upload.url-prefix:/uploads}")
+        private String urlPrefix;
 
         /**
          * 注册拦截器
@@ -52,14 +61,21 @@ public class WebConfig implements WebMvcConfigurer {
 
         /**
          * 配置静态资源访问路径
+         * 上传目录路径和 URL 前缀均从配置文件读取，便于生产环境切换
          */
         @Override
         public void addResourceHandlers(ResourceHandlerRegistry registry) {
-                // 配置上传文件访问路径
-                registry.addResourceHandler("/uploads/**")
-                                .addResourceLocations("file:./uploads/");
+                // 上传文件访问路径：根据配置动态确定 URL 前缀和存储位置
+                String pattern = urlPrefix.startsWith("/") ? urlPrefix : "/" + urlPrefix;
+                pattern = pattern.endsWith("/**") ? pattern : pattern + "/**";
+                String location = uploadPath.endsWith("/") ? uploadPath : uploadPath + "/";
+                if (!location.startsWith("file:")) {
+                        location = "file:" + location;
+                }
+                registry.addResourceHandler(pattern)
+                                .addResourceLocations(location);
 
-                // 配置Swagger文档访问路径
+                // Swagger 文档访问路径
                 registry.addResourceHandler("/doc.html")
                                 .addResourceLocations("classpath:/META-INF/resources/");
                 registry.addResourceHandler("/webjars/**")
