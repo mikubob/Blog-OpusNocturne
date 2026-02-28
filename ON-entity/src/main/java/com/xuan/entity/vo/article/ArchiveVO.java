@@ -8,7 +8,7 @@ import java.util.List;
 
 /**
  * 文章归档 VO
- * 对应接口14.1
+ * 对应接口13.1
  * 
  * @author 玄〤
  */

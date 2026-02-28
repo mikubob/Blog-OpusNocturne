@@ -9,7 +9,7 @@ import java.io.Serializable;
 
 /**
  * 友链申请/新增 DTO/修改友链
- * 对应接口：13.3.3 修改友链 13.1 申请友情链接 (Portal)
+ * 对应接口：12.3.3 修改友链 12.1 申请友情链接 (Portal)
  * @author 玄〤
  */
 @Data

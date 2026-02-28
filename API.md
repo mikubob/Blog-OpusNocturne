@@ -14,18 +14,18 @@
 5. [文章管理 (Blog Article)](#5-文章管理-blog-article)
 6. [分类与标签 (Category & Tag)](#6-分类与标签-category--tag)
 7. [评论互动 (Comment)](#7-评论互动-comment)
-8. [文件上传 (File Upload)](#8-文件上传-file-upload)
-9. [系统角色管理 (System Role)](#9-系统角色管理-system-role)
-10. [系统权限管理 (System Permission)](#10-系统权限管理-system-permission)
-11. [系统设置 (System Setting)](#11-系统设置-system-setting)
-12. [站点统计 (Site Statistics)](#12-站点统计-site-statistics)
-13. [友情链接 (Friend Link)](#13-友情链接-friend-link)
-14. [文章归档 (Article Archive)](#14-文章归档-article-archive)
-15. [互动功能 (Interaction)](#15-互动功能-interaction)
-16. [多媒体管理 (Media - Admin)](#16-多媒体管理-media---admin)
-17. [系统管理 (System - Admin)](#17-系统管理-system---admin)
-    - [17.5 获取服务器监控信息 (Admin)](#175-获取服务器监控信息-admin)
-18. [待实现接口 (Project Roadmap)](#18-待实现接口-project-roadmap)
+8. [系统角色管理 (System Role)](#8-系统角色管理-system-role)
+9. [系统权限管理 (System Permission)](#9-系统权限管理-system-permission)
+10. [系统设置 (System Setting)](#10-系统设置-system-setting)
+11. [站点统计 (Site Statistics)](#11-站点统计-site-statistics)
+12. [友情链接 (Friend Link)](#12-友情链接-friend-link)
+13. [文章归档 (Article Archive)](#13-文章归档-article-archive)
+14. [互动功能 (Interaction)](#14-互动功能-interaction)
+15. [多媒体管理 (Media - Admin)](#15-多媒体管理-media---admin)
+16. [系统管理 (System - Admin)](#16-系统管理-system---admin)
+    - [16.5 获取服务器监控信息 (Admin)](#165-获取服务器监控信息-admin)
+17. [待实现接口 (Project Roadmap)](#17-待实现接口-project-roadmap)
+18. [公共数据模型](#18-公共数据模型)
 
 ---
 
@@ -448,6 +448,79 @@ axios.post('/api/admin/auth/login', {
 {
   "code": 2005,
   "message": "登录已过期，请重新登录",
+  "data": null
+}
+```
+
+---
+
+### 3.5 修改密码
+
+- **接口路径**: `PUT /api/admin/auth/change-password`
+- **是否认证**: 是
+- **HTTP 状态码**: 200 (成功), 400 (参数校验失败), 401 (认证失败), 422 (业务校验失败)
+- **审计日志**: 本接口会产生审计日志
+
+**请求体 (JSON)**
+
+| 字段名 | 类型 | 必填 | 说明 | 校验规则 |
+|:---|:---|:---|:---|:---|
+| oldPassword | string | 是 | 旧密码 | 不能为空 |
+| newPassword | string | 是 | 新密码 | 不能为空，长度 6-20 位 |
+| confirmPassword | string | 是 | 确认新密码 | 不能为空，需与 newPassword 一致 |
+
+**前端调用示例**
+```javascript
+axios.put('/api/admin/auth/change-password', {
+  oldPassword: 'oldPass123',
+  newPassword: 'newPass456',
+  confirmPassword: 'newPass456'
+});
+```
+
+**成功响应（200）**
+```json
+{
+  "code": 0,
+  "message": "密码修改成功，请重新登录",
+  "data": null
+}
+```
+
+> ⚠️ **注意**：密码修改成功后，服务端会自动注销当前用户的 Token，前端需引导用户重新登录。
+
+**错误响应 — 两次密码不一致（422）**
+```json
+{
+  "code": 3004,
+  "message": "两次输入的密码不一致",
+  "data": null
+}
+```
+
+**错误响应 — 旧密码错误（422）**
+```json
+{
+  "code": 3005,
+  "message": "原密码不正确，请重新输入",
+  "data": null
+}
+```
+
+**错误响应 — 用户不存在（404）**
+```json
+{
+  "code": 3001,
+  "message": "用户不存在",
+  "data": null
+}
+```
+
+**错误响应 — 参数校验失败（400）**
+```json
+{
+  "code": 1001,
+  "message": "密码长度必须在6-20位之间",
   "data": null
 }
 ```
@@ -1733,57 +1806,9 @@ axios.put('/api/admin/comment/batch-audit', {
 
 ---
 
-## 8. 文件上传 (File Upload)
+## 8. 系统角色管理 (System Role)
 
-### 8.1 上传文件
-
-- **接口路径**: `POST /api/admin/upload`
-- **是否认证**: 是
-- **Content-Type**: `multipart/form-data`
-
-**请求参数**
-
-| 名称 | 类型 | 必填 | 说明 |
-|:---|:---|:---|:---|
-| file | file | 是 | 文件对象 |
-
-**前端调用示例**
-```javascript
-const formData = new FormData();
-formData.append('file', fileInput.files[0]);
-
-axios.post('/api/admin/upload', formData, {
-  headers: { 'Content-Type': 'multipart/form-data' }
-}).then(res => {
-  console.log('文件URL:', res.data.data);
-});
-```
-
-**成功响应**
-```json
-{
-  "code": 0,
-  "message": "操作成功",
-  "data": "http://localhost:8080/uploads/2026/02/demo_xxxx.png"
-}
-```
-
-> ⚠️ **注意**：返回值 `data` 直接为文件访问 URL 字符串，非对象。
-
-**失败响应**
-```json
-{
-  "code": 7003,
-  "message": "文件大小超出限制，请压缩后重试",
-  "data": null
-}
-```
-
----
-
-## 9. 系统角色管理 (System Role)
-
-### 9.1 获取所有角色
+### 8.1 获取所有角色
 
 - **接口路径**: `GET /api/admin/role/list`
 - **是否认证**: 是
@@ -1818,7 +1843,7 @@ axios.post('/api/admin/upload', formData, {
 
 ---
 
-### 9.2 获取角色详情
+### 8.2 获取角色详情
 
 - **接口路径**: `GET /api/admin/role/{id}`
 - **是否认证**: 是
@@ -1848,7 +1873,7 @@ axios.post('/api/admin/upload', formData, {
 
 ---
 
-### 9.3 创建角色
+### 8.3 创建角色
 
 - **接口路径**: `POST /api/admin/role`
 - **是否认证**: 是
@@ -1873,7 +1898,7 @@ axios.post('/api/admin/upload', formData, {
 
 ---
 
-### 9.4 更新角色
+### 8.4 更新角色
 
 - **接口路径**: `PUT /api/admin/role/{id}`
 - **是否认证**: 是
@@ -1904,7 +1929,7 @@ axios.post('/api/admin/upload', formData, {
 
 ---
 
-### 9.5 删除角色
+### 8.5 删除角色
 
 - **接口路径**: `DELETE /api/admin/role/{id}`
 - **是否认证**: 是
@@ -1926,7 +1951,7 @@ axios.post('/api/admin/upload', formData, {
 
 ---
 
-### 9.6 分配角色权限
+### 8.6 分配角色权限
 
 - **接口路径**: `PUT /api/admin/role/{id}/permissions`
 - **是否认证**: 是
@@ -1956,7 +1981,7 @@ axios.post('/api/admin/upload', formData, {
 
 ---
 
-### 9.7 获取角色权限ID列表
+### 8.7 获取角色权限ID列表
 
 - **接口路径**: `GET /api/admin/role/{id}/permissions`
 - **是否认证**: 是
@@ -1980,9 +2005,9 @@ axios.post('/api/admin/upload', formData, {
 
 ---
 
-## 10. 系统权限管理 (System Permission)
+## 9. 系统权限管理 (System Permission)
 
-### 10.1 获取权限列表
+### 9.1 获取权限列表
 
 - **接口路径**: `GET /api/admin/permission/tree`
 - **是否认证**: 是
@@ -2032,7 +2057,7 @@ axios.post('/api/admin/upload', formData, {
 
 ---
 
-### 10.2 创建权限
+### 9.2 创建权限
 
 - **接口路径**: `POST /api/admin/permission`
 - **是否认证**: 是
@@ -2062,7 +2087,7 @@ axios.post('/api/admin/upload', formData, {
 
 ---
 
-### 10.3 更新权限
+### 9.3 更新权限
 
 - **接口路径**: `PUT /api/admin/permission/{id}`
 - **是否认证**: 是
@@ -2086,7 +2111,7 @@ axios.post('/api/admin/upload', formData, {
 
 ---
 
-### 10.4 删除权限
+### 9.4 删除权限
 
 - **接口路径**: `DELETE /api/admin/permission/{id}`
 - **是否认证**: 是
@@ -2108,9 +2133,9 @@ axios.post('/api/admin/upload', formData, {
 
 ---
 
-## 11. 系统设置 (System Setting)
+## 10. 系统设置 (System Setting)
 
-### 11.1 获取系统设置
+### 10.1 获取系统设置
 
 - **接口路径**: `GET /api/admin/setting`
 - **是否认证**: 是
@@ -2149,7 +2174,7 @@ axios.post('/api/admin/upload', formData, {
 
 ---
 
-### 11.2 更新系统设置
+### 10.2 更新系统设置
 
 - **接口路径**: `PUT /api/admin/setting`
 - **是否认证**: 是
@@ -2167,9 +2192,9 @@ axios.post('/api/admin/upload', formData, {
 
 ---
 
-## 12. 站点统计 (Site Statistics)
+## 11. 站点统计 (Site Statistics)
 
-### 12.1 获取站点概览统计
+### 11.1 获取站点概览统计
 
 - **接口路径**: `GET /api/admin/statistics/overview`
 - **是否认证**: 是
@@ -2192,7 +2217,7 @@ axios.post('/api/admin/upload', formData, {
 
 ---
 
-### 12.2 获取文章发布趋势
+### 11.2 获取文章发布趋势
 
 - **接口路径**: `GET /api/admin/statistics/article-trend`
 - **是否认证**: 是
@@ -2211,7 +2236,7 @@ axios.post('/api/admin/upload', formData, {
 
 ---
 
-### 12.3 获取访问统计
+### 11.3 获取访问统计
 
 - **接口路径**: `GET /api/admin/statistics/visit`
 - **是否认证**: 是
@@ -2238,9 +2263,9 @@ axios.post('/api/admin/upload', formData, {
 
 ---
 
-## 13. 友情链接 (Friend Link)
+## 12. 友情链接 (Friend Link)
 
-### 13.1 申请友情链接 (Portal)
+### 12.1 申请友情链接 (Portal)
 
 - **接口路径**: `POST /api/blog/friend-link`
 - **是否认证**: 否
@@ -2268,7 +2293,7 @@ axios.post('/api/admin/upload', formData, {
 
 ---
 
-### 13.2 获取现有友链列表 (Portal)
+### 12.2 获取现有友链列表 (Portal)
 
 - **接口路径**: `GET /api/blog/friend-link/list`
 - **是否认证**: 否
@@ -2294,9 +2319,9 @@ axios.post('/api/admin/upload', formData, {
 
 ---
 
-### 13.3 后台友链管理 (Admin)
+### 12.3 后台友链管理 (Admin)
 
-#### 13.3.1 分页获取友链列表
+#### 12.3.1 分页获取友链列表
 
 - **接口路径**: `GET /api/admin/friend-link/page`
 - **是否认证**: 是
@@ -2310,7 +2335,7 @@ axios.post('/api/admin/upload', formData, {
 | status | int | 否 | `0` | 状态：0-待审核，1-上线，2-下架 |
 | name | string | 否 | `博客` | 名称搜索 |
 
-#### 13.3.2 审核友链
+#### 12.3.2 审核友链
 
 - **接口路径**: `PUT /api/admin/friend-link/{id}/audit`
 - **是否认证**: 是
@@ -2336,7 +2361,7 @@ axios.post('/api/admin/upload', formData, {
 }
 ```
 
-#### 13.3.3 修改友链
+#### 12.3.3 修改友链
 
 - **接口路径**: `PUT /api/admin/friend-link/{id}`
 - **是否认证**: 是
@@ -2351,7 +2376,7 @@ axios.post('/api/admin/upload', formData, {
 | description | string | 否 | 描述 |
 | sort | int | 否 | 排序 |
 
-#### 13.3.4 删除友链
+#### 12.3.4 删除友链
 
 - **接口路径**: `DELETE /api/admin/friend-link/{id}`
 - **是否认证**: 是
@@ -2367,9 +2392,9 @@ axios.post('/api/admin/upload', formData, {
 
 
 
-## 14. 文章归档 (Article Archive)
+## 13. 文章归档 (Article Archive)
 
-### 14.1 获取文章归档 (Portal)
+### 13.1 获取文章归档 (Portal)
 
 - **接口路径**: `GET /api/blog/article/archive`
 - **是否认证**: 否
@@ -2404,9 +2429,9 @@ axios.post('/api/admin/upload', formData, {
 
 ---
 
-## 15. 互动功能 (Interaction)
+## 14. 互动功能 (Interaction)
 
-### 15.1 文章点赞 (Portal)
+### 14.1 文章点赞 (Portal)
 
 - **接口路径**: `POST /api/blog/article/{id}/like`
 - **是否认证**: 否（通过 IP 限制重复点赞）
@@ -2426,7 +2451,7 @@ axios.post('/api/admin/upload', formData, {
 }
 ```
 
-### 15.2 获取文章评论统计 (Portal)
+### 14.2 获取文章评论统计 (Portal)
 
 - **接口路径**: `GET /api/blog/comment/stats/{articleId}`
 - **是否认证**: 否
@@ -2452,9 +2477,9 @@ axios.post('/api/admin/upload', formData, {
 
 ---
 
-## 16. 多媒体管理 (Media - Admin)
+## 15. 多媒体管理 (Media - Admin)
 
-### 16.1 上传文件 (Admin)
+### 15.1 上传文件 (Admin)
 
 - **接口路径**: `POST /api/admin/attachment/upload`
 - **是否认证**: 是
@@ -2505,7 +2530,7 @@ axios.post('/api/admin/upload', formData, {
 
 ---
 
-### 16.2 分页获取附件列表 (Admin)
+### 15.2 分页获取附件列表 (Admin)
 
 - **接口路径**: `GET /api/admin/attachment/page`
 - **是否认证**: 是
@@ -2550,7 +2575,7 @@ axios.post('/api/admin/upload', formData, {
 
 ---
 
-### 16.3 删除附件 (Admin)
+### 15.3 删除附件 (Admin)
 
 - **接口路径**: `DELETE /api/admin/attachment/{id}`
 - **是否认证**: 是
@@ -2580,7 +2605,7 @@ axios.post('/api/admin/upload', formData, {
 
 ---
 
-### 16.4 批量删除附件 (Admin)
+### 15.4 批量删除附件 (Admin)
 
 - **接口路径**: `DELETE /api/admin/attachment/batch`
 - **是否认证**: 是
@@ -2611,9 +2636,9 @@ axios.post('/api/admin/upload', formData, {
 
 ---
 
-## 17. 系统管理 (System - Admin)
+## 16. 系统管理 (System - Admin)
 
-### 17.1 修改登录密码 (Admin)
+### 16.1 修改登录密码 (Admin)
 
 - **接口路径**: `PUT /api/admin/auth/change-password`
 - **是否认证**: 是
@@ -2636,7 +2661,7 @@ axios.post('/api/admin/upload', formData, {
 }
 ```
 
-### 17.2 查看操作日志 (Admin)
+### 16.2 查看操作日志 (Admin)
 
 - **接口路径**: `GET /api/admin/log/operation`
 - **是否认证**: 是
@@ -2675,7 +2700,7 @@ axios.post('/api/admin/upload', formData, {
 }
 ```
 
-### 17.3 获取关于我 (Portal)
+### 16.3 获取关于我 (Portal)
 
 - **接口路径**: `GET /api/blog/about`
 - **是否认证**: 否
@@ -2693,7 +2718,7 @@ axios.post('/api/admin/upload', formData, {
 
 ---
 
-### 17.4 更新关于我 (Admin)
+### 16.4 更新关于我 (Admin)
 
 - **接口路径**: `PUT /api/admin/about`
 - **是否认证**: 是
@@ -2724,7 +2749,7 @@ axios.post('/api/admin/upload', formData, {
 
 ---
 
-### 17.5 获取服务器监控信息 (Admin)
+### 16.5 获取服务器监控信息 (Admin)
 
 - **接口路径**: `GET /api/admin/monitor/server`
 - **是否认证**: 是
@@ -2786,7 +2811,7 @@ axios.post('/api/admin/upload', formData, {
 
 ---
 
-## 18. 待实现接口 (Project Roadmap)
+## 17. 待实现接口 (Project Roadmap)
 
 以下功能将在后续版本中逐步完善：
 
@@ -2799,9 +2824,9 @@ axios.post('/api/admin/upload', formData, {
 
 ---
 
-## 19. 公共数据模型
+## 18. 公共数据模型
 
-### 19.1 分页结果 (PageResult<T>)
+### 18.1 分页结果 (PageResult<T>)
 
 **Schema 文件路径**: `schemas/PageResult.json`
 
@@ -2823,7 +2848,7 @@ axios.post('/api/admin/upload', formData, {
 
 **引用方式**: `$ref: #/components/schemas/PageResult«Article»`
 
-### 19.2 趋势数据 (TrendData<T>)
+### 18.2 趋势数据 (TrendData<T>)
 
 **Schema 文件路径**: `schemas/TrendData.json`
 
@@ -2837,7 +2862,7 @@ axios.post('/api/admin/upload', formData, {
 
 **引用方式**: `$ref: #/components/schemas/TrendData`
 
-### 19.3 统计概览 (StatisticsOverview)
+### 18.3 统计概览 (StatisticsOverview)
 
 **Schema 文件路径**: `schemas/StatisticsOverview.json`
 
@@ -2855,7 +2880,7 @@ axios.post('/api/admin/upload', formData, {
 
 **引用方式**: `$ref: #/components/schemas/StatisticsOverview`
 
-### 19.4 访问趋势项 (VisitTrendItem)
+### 18.4 访问趋势项 (VisitTrendItem)
 
 **Schema 文件路径**: `schemas/VisitTrendItem.json`
 
@@ -2870,7 +2895,7 @@ axios.post('/api/admin/upload', formData, {
 
 **引用方式**: `$ref: #/components/schemas/VisitTrendItem`
 
-### 19.5 统一错误体 (ErrorDetail)
+### 18.5 统一错误体 (ErrorDetail)
 
 **Schema 文件路径**: `schemas/ErrorDetail.json`
 
@@ -2892,8 +2917,9 @@ axios.post('/api/admin/upload', formData, {
 
 | 版本号 | 日期 | 变更人 | 变更摘要 | 兼容级别 |
 |:---:|:---:|:---:|:---|:---|
-| **2.3.0** | 2026-02-28 | Admin | 新增 17.5 节「获取服务器监控信息」接口文档（`GET /api/admin/monitor/server`），补充 CPU/内存/系统三维度响应字段说明；更新目录子条目 | Compatible |
-| **2.2.0** | 2026-02-27 | Admin | 重构第16节多媒体管理：新增上传(16.1)、批量删除(16.4)接口；补全附件字段说明、bizType/bizId 说明及失败响应；接口编号整体顺移 | Compatible |
+| **2.4.0** | 2026-02-28 | Admin | 删除旧第8节「文件上传」接口（已由第15节多媒体管理 `POST /api/admin/attachment/upload` 替代）；章节编号整体前移（原9-19节 → 8-18节）；同步更新目录与变更记录引用 | Compatible |
+| **2.3.0** | 2026-02-28 | Admin | 新增 16.5 节「获取服务器监控信息」接口文档（`GET /api/admin/monitor/server`），补充 CPU/内存/系统三维度响应字段说明；更新目录子条目 | Compatible |
+| **2.2.0** | 2026-02-27 | Admin | 重构第15节多媒体管理：新增上传(15.1)、批量删除(15.4)接口；补全附件字段说明、bizType/bizId 说明及失败响应；接口编号整体顺移 | Compatible |
 | **2.1.0** | 2026-02-20 | Admin | 统一时间格式约定、补充 likeCount/aboutMe 字段、完善关于我接口文档、增加空值处理和时间格式全局约定 | Compatible |
 | **1.1.0** | 2026-02-20 | Admin | 升级为平台级API规范，包含HTTP语义化改造、幂等性与并发控制、数据模型抽象层等 | Breaking |
 | **1.0.0** | 2026-01-01 | Admin | 初始版本 | Compatible |

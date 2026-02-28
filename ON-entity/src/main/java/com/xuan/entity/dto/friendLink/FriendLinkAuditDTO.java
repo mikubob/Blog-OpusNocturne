@@ -8,7 +8,7 @@ import java.io.Serializable;
 
 /**
  * 友链审核 DTO
- * 对应接口：13.3.2 审核友链
+ * 对应接口：12.3.2 审核友链
  * @author 玄〤
  */
 @Data

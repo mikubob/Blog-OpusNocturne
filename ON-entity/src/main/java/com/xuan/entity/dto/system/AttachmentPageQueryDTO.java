@@ -8,7 +8,7 @@ import java.io.Serializable;
 
 /**
  * 附件分页查询参数
- * 对应接口：16.1 分页获取附件列表 (Admin)
+ * 对应接口：15.2 分页获取附件列表 (Admin)
  * @author 玄〤
  * @since 2026-02-27
  */

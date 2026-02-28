@@ -7,7 +7,7 @@ import lombok.EqualsAndHashCode;
 
 /**
  * 友链分页查询参数
- * 对应接口：13.3.1 分页获取友链列表
+ * 对应接口：12.3.1 分页获取友链列表
  * @author 玄〤
  */
 @Data

@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * 服务器监控信息 VO
- * 对应接口：17.5 获取服务器监控信息 (Admin)
+ * 对应接口：16.5 获取服务器监控信息 (Admin)
  */
 @Data
 @Builder
