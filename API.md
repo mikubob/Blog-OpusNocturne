@@ -24,6 +24,7 @@
 15. [互动功能 (Interaction)](#15-互动功能-interaction)
 16. [多媒体管理 (Media - Admin)](#16-多媒体管理-media---admin)
 17. [系统管理 (System - Admin)](#17-系统管理-system---admin)
+    - [17.5 获取服务器监控信息 (Admin)](#175-获取服务器监控信息-admin)
 18. [待实现接口 (Project Roadmap)](#18-待实现接口-project-roadmap)
 
 ---
@@ -2723,6 +2724,68 @@ axios.post('/api/admin/upload', formData, {
 
 ---
 
+### 17.5 获取服务器监控信息 (Admin)
+
+- **接口路径**: `GET /api/admin/monitor/server`
+- **是否认证**: 是
+- **HTTP 状态码**: 200 (成功), 401 (未认证), 403 (权限不足)
+- **说明**: 返回当前服务器的实时监控快照，包含 CPU、内存、操作系统三个维度的数据。
+  数据由后台定时任务每 **2 秒**刷新一次并缓存，本接口为纯读缓存操作，响应延迟极低。
+
+**成功响应（200）**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": {
+    "cpu": {
+      "name": "Intel(R) Core(TM) i9-13900K CPU @ 3.00GHz",
+      "packages": 1,
+      "cores": 32,
+      "usage": 15.63
+    },
+    "memory": {
+      "total": "32.00 GB",
+      "used": "18.42 GB",
+      "free": "13.58 GB",
+      "usage": 57.56
+    },
+    "system": {
+      "os": "Windows 11",
+      "arch": "amd64",
+      "uptime": "3天 2小时 15分钟"
+    }
+  }
+}
+```
+
+**响应字段说明**
+
+| 字段路径 | 类型 | 说明 |
+|:---|:---|:---|
+| `cpu.name` | string | CPU 型号名称 |
+| `cpu.packages` | int | 物理 CPU 数量（路数） |
+| `cpu.cores` | int | 逻辑核心数（含超线程） |
+| `cpu.usage` | double | CPU 使用率（%），保留两位小数 |
+| `memory.total` | string | 物理内存总量（人类可读，如 `16.00 GB`） |
+| `memory.used` | string | 已用内存 |
+| `memory.free` | string | 可用内存 |
+| `memory.usage` | double | 内存使用率（%），保留两位小数 |
+| `system.os` | string | 操作系统名称（来自 JVM 系统属性 `os.name`） |
+| `system.arch` | string | CPU 指令集架构（如 `amd64`、`aarch64`） |
+| `system.uptime` | string | 系统持续运行时长（如 `3天 2小时 15分钟`） |
+
+**错误响应（401）**
+```json
+{
+  "code": 2001,
+  "message": "请先登录后再操作",
+  "data": null
+}
+```
+
+---
+
 ## 18. 待实现接口 (Project Roadmap)
 
 以下功能将在后续版本中逐步完善：
@@ -2829,6 +2892,7 @@ axios.post('/api/admin/upload', formData, {
 
 | 版本号 | 日期 | 变更人 | 变更摘要 | 兼容级别 |
 |:---:|:---:|:---:|:---|:---|
+| **2.3.0** | 2026-02-28 | Admin | 新增 17.5 节「获取服务器监控信息」接口文档（`GET /api/admin/monitor/server`），补充 CPU/内存/系统三维度响应字段说明；更新目录子条目 | Compatible |
 | **2.2.0** | 2026-02-27 | Admin | 重构第16节多媒体管理：新增上传(16.1)、批量删除(16.4)接口；补全附件字段说明、bizType/bizId 说明及失败响应；接口编号整体顺移 | Compatible |
 | **2.1.0** | 2026-02-20 | Admin | 统一时间格式约定、补充 likeCount/aboutMe 字段、完善关于我接口文档、增加空值处理和时间格式全局约定 | Compatible |
 | **1.1.0** | 2026-02-20 | Admin | 升级为平台级API规范，包含HTTP语义化改造、幂等性与并发控制、数据模型抽象层等 | Breaking |

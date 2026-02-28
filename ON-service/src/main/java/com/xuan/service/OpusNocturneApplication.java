@@ -3,6 +3,7 @@ package com.xuan.service;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * OpusNocturne博客系统启动类
@@ -11,6 +12,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  */
 @SpringBootApplication(scanBasePackages = "com.xuan")
 @MapperScan("com.xuan.service.mapper")
+@EnableScheduling
 public class OpusNocturneApplication {
 
     // ANSI 颜色代码常量
