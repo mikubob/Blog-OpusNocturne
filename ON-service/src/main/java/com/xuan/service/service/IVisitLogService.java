@@ -39,4 +39,12 @@ public interface IVisitLogService extends IService<VisitLog> {
      * 获取过去 N 天的访问趋势
      */
     List<VisitTrendVO> getVisitTrend(int days);
+
+    /**
+     * 获取热门页面
+     * @param days 天数
+     * @param limit 限制数量
+     * @return 热门页面列表
+     */
+    List<Map<String, Object>> getTopPages(int days, int limit);
 }

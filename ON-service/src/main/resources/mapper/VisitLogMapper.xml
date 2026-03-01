@@ -24,4 +24,15 @@
         GROUP BY visitDate
         ORDER BY visitDate
     </select>
+
+    <!--获取热门页面（按访问次数排序）-->
+    <select id="getTopPages" resultType="java.util.Map">
+        SELECT page_url AS pageUrl, COUNT(*) AS count
+        FROM visit_log
+        WHERE visit_time BETWEEN #{start} AND #{end}
+        AND page_url IS NOT NULL
+        GROUP BY page_url
+        ORDER BY count DESC
+        LIMIT #{limit}
+    </select>
 </mapper>

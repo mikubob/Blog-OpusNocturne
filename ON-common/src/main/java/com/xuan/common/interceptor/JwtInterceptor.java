@@ -8,6 +8,7 @@ import com.xuan.common.enums.ErrorCode;
 import com.xuan.common.utils.JwtUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -32,7 +33,7 @@ public class JwtInterceptor implements HandlerInterceptor {
     private final StringRedisTemplate stringRedisTemplate;
 
     @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
+    public boolean preHandle(HttpServletRequest request, @NonNull HttpServletResponse response, Object handler)
             throws Exception {
         // OPTIONS 请求直接放行（CORS 预检）
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {

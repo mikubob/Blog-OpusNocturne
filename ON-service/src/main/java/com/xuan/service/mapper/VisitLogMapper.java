@@ -8,6 +8,7 @@ import org.apache.ibatis.annotations.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 访问记录 Mapper
@@ -32,4 +33,11 @@ public interface VisitLogMapper extends BaseMapper<VisitLog> {
      * 获取每日访问趋势数据
      */
     List<VisitTrendVO> getVisitTrend(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    /**
+     * 获取热门页面
+     */
+    List<Map<String, Object>> getTopPages(@Param("start") LocalDateTime start, 
+                                         @Param("end") LocalDateTime end, 
+                                         @Param("limit") int limit);
 }

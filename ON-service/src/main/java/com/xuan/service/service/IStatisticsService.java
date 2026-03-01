@@ -13,5 +13,5 @@ public interface IStatisticsService {
     Map<String, Object> getArticleTrend();
 
     /** 获取访问统计 */
-    Map<String, Object> getVisitStats();
+    Map<String, Object> getVisitStats(Integer topPagesLimit);
 }

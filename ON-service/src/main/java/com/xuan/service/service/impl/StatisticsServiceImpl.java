@@ -10,6 +10,7 @@ import com.xuan.service.mapper.CommentMapper;
 import com.xuan.service.mapper.SysUserMapper;
 import com.xuan.service.mapper.TagMapper;
 import com.xuan.service.service.IStatisticsService;
+import com.xuan.service.service.IVisitLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -43,6 +44,7 @@ public class StatisticsServiceImpl implements IStatisticsService {
     private final TagMapper tagMapper;
     private final CommentMapper commentMapper;
     private final SysUserMapper sysUserMapper;
+    private final IVisitLogService VisitLogService;
 
     /**
      * 获取站点概览数据
@@ -108,10 +110,18 @@ public class StatisticsServiceImpl implements IStatisticsService {
     }
 
     @Override
-    public Map<String, Object> getVisitStats() {
+    public Map<String, Object> getVisitStats(Integer topPagesLimit) {
         Map<String, Object> result = new LinkedHashMap<>();
 
-        //1.获取总访问量
+        //1.获取总访问量（来自Redis）
+        result.put("totalVisits", VisitLogService.getTodayUV());
+        result.put("totalPageViews", VisitLogService.getTotalPV());
+        //2.过去七天访问趋势（来自数据库 visit_log聚合查询）
+        result.put("trend", VisitLogService.getVisitTrend(7));
+
+        //3.获取热门页面（来自数据库visit_log 聚合查询）
+        int limit=topPagesLimit!=null?topPagesLimit:10;
+        result.put("topPages", VisitLogService.getTopPages(7,limit));
 
         return result;
     }

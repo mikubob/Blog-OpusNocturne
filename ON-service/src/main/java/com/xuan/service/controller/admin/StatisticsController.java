@@ -34,7 +34,7 @@ public class StatisticsController {
 
     @Operation(summary = "获取访问统计")
     @GetMapping("/visit")
-    public Result<Map<String, Object>> getVisitStats() {
-        return Result.success(statisticsService.getVisitStats());
+    public Result<Map<String, Object>> getVisitStats(@RequestParam(required = false,defaultValue = "10") Integer topPagesLimit) {
+        return Result.success(statisticsService.getVisitStats(topPagesLimit));
     }
 }

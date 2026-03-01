@@ -8,6 +8,7 @@ import com.xuan.service.service.IVisitLogService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -47,6 +48,7 @@ public class VisitLogServiceImpl extends ServiceImpl<VisitLogMapper, VisitLog> i
      * @param pageUrl 访问页面URL
      * @param referer 来源URL
      */
+    @Async
     @Override
     public void recordVisit(String ipAddress, String userAgent, String pageUrl, String referer) {
 
@@ -120,5 +122,18 @@ public class VisitLogServiceImpl extends ServiceImpl<VisitLogMapper, VisitLog> i
         LocalDateTime end=LocalDate.now().atTime(LocalTime.MAX);
         LocalDateTime start=LocalDate.now().minusDays(days-1).atStartOfDay();
         return visitLogMapper.getVisitTrend(start,end);
+    }
+
+    /**
+     * 获取热门页面
+     * @param days 天数
+     * @param limit 限制数量
+     * @return 热门页面列表
+     */
+    @Override
+    public List<Map<String, Object>> getTopPages(int days, int limit) {
+        LocalDateTime end = LocalDate.now().atTime(LocalTime.MAX);
+        LocalDateTime start = LocalDate.now().minusDays(days - 1).atStartOfDay();
+        return visitLogMapper.getTopPages(start, end, limit);
     }
 }
