@@ -8,7 +8,7 @@ import java.util.List;
 
 /**
  * 文章归档 VO
- * 对应接口13.1
+ * 对应接口：5.11 获取文章归档 (Portal)
  * 
  * @author 玄〤
  */
