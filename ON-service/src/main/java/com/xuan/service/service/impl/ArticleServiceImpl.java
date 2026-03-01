@@ -573,10 +573,11 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     }
 
     /**
-     * 文章点赞
+     * 文章点赞/取消点赞
      *
      * @param id 文章id
-     * @return 点赞数
+     * @param ip 用户IP
+     * @return 最新点赞数
      */
     @Override
     @Transactional
@@ -590,48 +591,86 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             throw new BusinessException(ARTICLE_NOT_FOUND);
         }
 
-        // 2.检查是否重复点赞（先查redis，再查数据库）
-        String userKey = ARTICLE_USER_LIKE_KEY_PREFIX + id;
-        if (Boolean.TRUE.equals(redisTemplate.hasKey(userKey))) {
-            throw new BusinessException("您已经点过赞了");
+        // 2.检查是否已点赞（先查redis，再查数据库）
+        String userKey = ARTICLE_USER_LIKE_KEY_PREFIX + id + ":" + ip;
+        boolean hasLiked = Boolean.TRUE.equals(redisTemplate.hasKey(userKey));
+        
+        if (!hasLiked) {
+            // 3.二次检查DB防止redis过期后的重复点赞
+            Long count = articleLikeMapper.selectCount(new LambdaQueryWrapper<ArticleLike>()
+                    .eq(ArticleLike::getArticleId, id)
+                    .eq(ArticleLike::getIpAddress, ip));
+            if (count > 0) {
+                // 同步回Redis防止后续请求穿透到DB
+                redisTemplate.opsForValue().set(userKey, "1", 24, TimeUnit.HOURS);
+                hasLiked = true;
+            }
         }
 
-        // 3.二次检查DB防止redis过期后的重复点赞
-        Long count = articleLikeMapper.selectCount(new LambdaQueryWrapper<ArticleLike>()
-                .eq(ArticleLike::getArticleId, id)
-                .eq(ArticleLike::getIpAddress, ip));
-        if (count > 0) {
-            // 同步回Redis防止后续请求穿透到DB
-            redisTemplate.opsForValue().set(userKey, "1", 24, TimeUnit.HOURS);
-            throw new BusinessException("您已经点过赞了");
-        }
-
-        //4.记录点赞流水（持久化）
-        ArticleLike articleLike = ArticleLike.builder()
-                .articleId(id)
-                .ipAddress(ip)
-                .createTime(LocalDateTime.now())
-                .build();
-        articleLikeMapper.insert(articleLike);
-
-        //5.更新文章表点赞总数（DB+1）
-        boolean success = update(new LambdaUpdateWrapper<Article>()
-                .setSql("like_count=like_count+1")
-                .eq(Article::getId, id));
-        if (!success) {
-            throw new BusinessException("点赞失败");
-        }
-
-        //6.更新计数缓存（Redis+1）
-        String countKey = redisTemplate.opsForValue().get(ARTICLE_LIKE_COUNT_KEY_PREFIX + id);
         Long newCount;
-        if (Boolean.TRUE.equals(redisTemplate.hasKey(countKey))) {
-            newCount = redisTemplate.opsForValue().increment(countKey);
+        if (hasLiked) {
+            // 已点赞，执行取消点赞逻辑
+            // 1.删除点赞记录
+            articleLikeMapper.delete(new LambdaQueryWrapper<ArticleLike>()
+                    .eq(ArticleLike::getArticleId, id)
+                    .eq(ArticleLike::getIpAddress, ip));
+            
+            // 2.更新文章表点赞总数（DB-1）
+            boolean success = update(new LambdaUpdateWrapper<Article>()
+                    .setSql("like_count=like_count-1")
+                    .eq(Article::getId, id)
+                    .gt(Article::getLikeCount, 0)); // 确保点赞数不会小于0
+            if (!success) {
+                throw new BusinessException("取消点赞失败");
+            }
+            
+            // 3.更新计数缓存（Redis-1）
+            String countKey = ARTICLE_LIKE_COUNT_KEY_PREFIX + id;
+            if (Boolean.TRUE.equals(redisTemplate.hasKey(countKey))) {
+                newCount = redisTemplate.opsForValue().decrement(countKey);
+                if (newCount < 0) {
+                    newCount = 0L;
+                    redisTemplate.opsForValue().set(countKey, "0");
+                }
+            } else {
+                // RedisKey不存在，回填并过期
+                newCount = getLikeCountFromRedis(id);
+            }
+            
+            // 4.删除Redis中的点赞标记
+            redisTemplate.delete(userKey);
         } else {
-            //RedisKey不存在，回填并过期
-            newCount = getLikeCountFromRedis(id);
+            // 未点赞，执行点赞逻辑
+            // 1.记录点赞流水（持久化）
+            ArticleLike articleLike = ArticleLike.builder()
+                    .articleId(id)
+                    .ipAddress(ip)
+                    .createTime(LocalDateTime.now())
+                    .build();
+            articleLikeMapper.insert(articleLike);
+
+            // 2.更新文章表点赞总数（DB+1）
+            boolean success = update(new LambdaUpdateWrapper<Article>()
+                    .setSql("like_count=like_count+1")
+                    .eq(Article::getId, id));
+            if (!success) {
+                throw new BusinessException("点赞失败");
+            }
+
+            // 3.更新计数缓存（Redis+1）
+            String countKey = ARTICLE_LIKE_COUNT_KEY_PREFIX + id;
+            if (Boolean.TRUE.equals(redisTemplate.hasKey(countKey))) {
+                newCount = redisTemplate.opsForValue().increment(countKey);
+            } else {
+                // RedisKey不存在，回填并过期
+                newCount = getLikeCountFromRedis(id);
+            }
+            
+            // 4.在Redis中标记已点赞
+            redisTemplate.opsForValue().set(userKey, "1", 24, TimeUnit.HOURS);
         }
-        //7.返回点赞数
+        
+        // 5.返回最新点赞数
         return newCount;
     }
 
@@ -705,7 +744,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         Long likeCount = (article != null && article.getLikeCount() != null) ? article.getLikeCount() : 0L;
 
         // 回填 Redis (24小时过期)
-        redisTemplate.opsForValue().set(key, String.valueOf(likeCount), 24, java.util.concurrent.TimeUnit.HOURS);
+        redisTemplate.opsForValue().set(key, String.valueOf(likeCount), 24,TimeUnit.HOURS);
 
         return likeCount;
     }

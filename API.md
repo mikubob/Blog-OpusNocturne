@@ -1161,7 +1161,7 @@ axios.delete('/api/admin/article/batch-delete', {
 }
 ```
 
-### 5.12 文章点赞 (Portal)
+### 5.12 文章点赞/取消点赞 (Portal)
 
 - **接口路径**: `POST /api/blog/article/{id}/like`
 - **是否认证**: 否（通过 IP 限制重复点赞）
@@ -1172,11 +1172,16 @@ axios.delete('/api/admin/article/batch-delete', {
 |:---|:---|:---|
 | id | `1` | 文章ID |
 
+**功能说明**：
+- 首次点击：执行点赞操作，返回最新点赞数
+- 再次点击：执行取消点赞操作，返回最新点赞数
+- 系统会通过 IP 地址识别用户，防止重复点赞
+
 **成功响应**
 ```json
 {
   "code": 0,
-  "message": "点赞成功",
+  "message": "操作成功",
   "data": 122  // 返回最新的点赞数
 }
 ```
@@ -1698,6 +1703,8 @@ axios.delete('/api/admin/article/batch-delete', {
 | parentId | long | 否 | 父评论ID，回复时必填 |
 | nickname | string | 是 | 昵称 |
 | email | string | 否 | 邮箱（用于接收回复通知） |
+
+**说明**：`user_agent` 字段无需前端传递，后端将自动从请求头中提取并保存用户设备信息。
 
 **成功响应**
 ```json
@@ -2724,6 +2731,48 @@ GET /api/admin/statistics/visit?topPagesLimit=5
 - **HTTP 状态码**: 200 (成功), 401 (未认证), 403 (权限不足)
 - **说明**: 返回当前服务器的实时监控快照，包含 CPU、内存、操作系统三个维度的数据。
   数据由后台定时任务每 **2 秒**刷新一次并缓存，本接口为纯读缓存操作，响应延迟极低。
+
+---
+
+### 14.4 查看访问日志 (Admin)
+
+- **接口路径**: `GET /api/admin/log/visit`
+- **是否认证**: 是
+
+**查询参数**
+
+| 名称 | 类型 | 必填 | 示例 | 说明 |
+|:---|:---|:---|:---|:---|
+| current | int | 否 | `1` | 页码 |
+| size | int | 否 | `10` | 每页条数 |
+| startTime | string | 否 | `2023-10-01 00:00:00` | 开始时间 |
+| endTime | string | 否 | `2023-10-02 00:00:00` | 结束时间 |
+| pageUrl | string | 否 | `/blog/article/1` | 访问页面URL |
+| ipAddress | string | 否 | `127.0.0.1` | IP地址 |
+
+**成功响应**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": {
+    "records": [
+      {
+        "id": 1,
+        "ipAddress": "127.0.0.1",
+        "userAgent": "Mozilla/5.0...",
+        "visitTime": "2023-10-01 10:00:00",
+        "pageUrl": "/blog/article/1",
+        "referer": "https://www.google.com"
+      }
+    ],
+    "total": 100,
+    "size": 10,
+    "current": 1,
+    "pages": 10
+  }
+}
+```
 
 **成功响应（200）**
 ```json

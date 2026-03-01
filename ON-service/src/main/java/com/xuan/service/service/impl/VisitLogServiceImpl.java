@@ -1,7 +1,13 @@
 package com.xuan.service.service.impl;
 
+import cn.hutool.core.date.DateUtil;
+import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.xuan.entity.dto.log.VisitLogQueryDTO;
 import com.xuan.entity.po.sys.VisitLog;
+import com.xuan.entity.vo.log.VisitLogVO;
 import com.xuan.entity.vo.monitor.VisitTrendVO;
 import com.xuan.service.mapper.VisitLogMapper;
 import com.xuan.service.service.IVisitLogService;
@@ -135,5 +141,65 @@ public class VisitLogServiceImpl extends ServiceImpl<VisitLogMapper, VisitLog> i
         LocalDateTime end = LocalDate.now().atTime(LocalTime.MAX);
         LocalDateTime start = LocalDate.now().minusDays(days - 1).atStartOfDay();
         return visitLogMapper.getTopPages(start, end, limit);
+    }
+
+    /**
+     * 分页查询访问日志
+     * @param queryDTO 查询参数
+     * @return 分页结果
+     */
+    @Override
+    public Page<VisitLogVO> pageVisitLogs(VisitLogQueryDTO queryDTO) {
+        // 构建查询条件
+        LambdaQueryWrapper<VisitLog> wrapper = new LambdaQueryWrapper<>();
+        
+        // 时间范围筛选
+        if (StrUtil.isNotBlank(queryDTO.getStartTime())) {
+            LocalDateTime start = DateUtil.parseLocalDateTime(queryDTO.getStartTime());
+            wrapper.ge(VisitLog::getVisitTime, start);
+        }
+        
+        if (StrUtil.isNotBlank(queryDTO.getEndTime())) {
+            LocalDateTime end = DateUtil.parseLocalDateTime(queryDTO.getEndTime());
+            wrapper.le(VisitLog::getVisitTime, end);
+        }
+        
+        // 页面URL筛选
+        if (StrUtil.isNotBlank(queryDTO.getPageUrl())) {
+            wrapper.like(VisitLog::getPageUrl, queryDTO.getPageUrl());
+        }
+        
+        // IP地址筛选
+        if (StrUtil.isNotBlank(queryDTO.getIpAddress())) {
+            wrapper.like(VisitLog::getIpAddress, queryDTO.getIpAddress());
+        }
+        
+        // 按访问时间倒序排序
+        wrapper.orderByDesc(VisitLog::getVisitTime);
+        
+        // 分页查询
+        Page<VisitLog> page = page(new Page<>(queryDTO.getCurrent(), queryDTO.getSize()), wrapper);
+        Page<VisitLogVO> voPage = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
+        
+        // 转换为VO
+        voPage.setRecords(page.getRecords().stream().map(this::toVO).toList());
+        
+        return voPage;
+    }
+    
+    /**
+     * 将VisitLog转换为VisitLogVO
+     * @param log 访问日志实体
+     * @return 访问日志VO
+     */
+    private VisitLogVO toVO(VisitLog log) {
+        VisitLogVO vo = new VisitLogVO();
+        vo.setId(log.getId());
+        vo.setIpAddress(log.getIpAddress());
+        vo.setUserAgent(log.getUserAgent());
+        vo.setVisitTime(log.getVisitTime());
+        vo.setPageUrl(log.getPageUrl());
+        vo.setReferer(log.getReferer());
+        return vo;
     }
 }

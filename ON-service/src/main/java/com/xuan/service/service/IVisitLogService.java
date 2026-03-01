@@ -1,7 +1,10 @@
 package com.xuan.service.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.xuan.entity.dto.log.VisitLogQueryDTO;
 import com.xuan.entity.po.sys.VisitLog;
+import com.xuan.entity.vo.log.VisitLogVO;
 import com.xuan.entity.vo.monitor.VisitTrendVO;
 
 import java.util.List;
@@ -47,4 +50,11 @@ public interface IVisitLogService extends IService<VisitLog> {
      * @return 热门页面列表
      */
     List<Map<String, Object>> getTopPages(int days, int limit);
+
+    /**
+     * 分页查询访问日志
+     * @param queryDTO 查询参数
+     * @return 分页结果
+     */
+    Page<VisitLogVO> pageVisitLogs(VisitLogQueryDTO queryDTO);
 }
