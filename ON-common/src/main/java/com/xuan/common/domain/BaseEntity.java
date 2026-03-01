@@ -37,13 +37,6 @@ public abstract class BaseEntity implements Serializable {
     @Schema(description = "主键ID")
     private Long id;
 
-    /**
-     * 逻辑删除标识
-     * 1: 删除, 0: 未删除
-     */
-    @TableLogic
-    @Schema(description = "逻辑删除标识")
-    private Integer isDelete;
 
     /**
      * 创建时间
