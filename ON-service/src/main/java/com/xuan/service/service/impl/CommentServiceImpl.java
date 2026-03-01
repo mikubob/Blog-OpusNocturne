@@ -108,19 +108,24 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
      */
     @Override
     public Map<String, Long> getArticleCommentStats(Long articleId) {
-        //1.获取评论总数
-        Long total = lambdaQuery()
-                .eq(Comment::getArticleId, articleId)
-                .eq(Comment::getStatus, APPROVED)
-                .count();
-        //2.获取一级评论数
-        Long rootCount = lambdaQuery()
-                .eq(Comment::getArticleId, articleId)
-                .eq(Comment::getStatus, APPROVED)
-                .isNull(Comment::getRootParentId)
-                .count();
+        LambdaQueryWrapper<Comment> wrapper=new LambdaQueryWrapper<>();
 
-        //3.构建返回结果
+        //1.构建查询条件
+        if (articleId!=null&&articleId!=0){
+            wrapper.eq(Comment::getArticleId,articleId);
+        }else{
+            wrapper.eq(Comment::getArticleId,0);//留言板功能
+        }
+        wrapper.eq(Comment::getStatus,APPROVED);
+        //2.获取评论总数
+        Long total=count(wrapper);
+
+        //3.获取根评论的数量
+        LambdaQueryWrapper<Comment> rootWrapper = wrapper.clone();
+        rootWrapper.isNull(Comment::getRootParentId);
+        Long rootCount = count(rootWrapper);
+
+        //4.构建返回结果
         Map<String, Long> result = new HashMap<>();
         result.put("total", total!=null?total:0L);
         result.put("rootCount", rootCount!=null?rootCount:0L);

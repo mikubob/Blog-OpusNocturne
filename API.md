@@ -88,7 +88,6 @@ sequenceDiagram
 - 审计内容包括：操作人、操作时间、操作类型、操作结果、IP地址等
 
 ### HTTP 状态码策略
-【废弃"全部 200"策略，按资源行为重新映射状态码】
 
 | HTTP 状态码 | 含义 | 适用场景 |
 |:---:|:---|:---|
@@ -241,23 +240,9 @@ POST /api/admin/article
 Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
 ```
 
-### 2.3 乐观锁机制
 
-**实现方式**：
-- 所有会写数据库的接口若涉及版本号，必须在请求头或 body 中携带 `version` 字段
-- 服务端使用 `WHERE id = ? AND version = ?` 进行更新
-- 版本号不一致返回 409 Conflict
 
-**version 校验失败响应示例**：
-```json
-{
-  "code": 409,
-  "message": "数据版本不一致，请刷新后重试",
-  "data": null
-}
-```
-
-### 2.4 防重 Token 流程
+### 2.3 防重 Token 流程
 
 ```mermaid
 sequenceDiagram
@@ -279,7 +264,7 @@ sequenceDiagram
     end
 ```
 
-### 2.5 并发写冲突示例
+### 2.4 并发写冲突示例
 
 **请求**：
 ```http
@@ -323,11 +308,11 @@ Content-Type: application/json
 **前端调用示例**
 ```javascript
 axios.post('/api/admin/auth/login', {
-    username: 'admin',
-    password: 'admin123'
+  username: 'admin',
+  password: 'admin123'
 }).then(response => {
-    const token = response.data.data.token;
-    localStorage.setItem('token', token);
+  const token = response.data.data.token;
+  localStorage.setItem('token', token);
 });
 ```
 
@@ -472,9 +457,9 @@ axios.post('/api/admin/auth/login', {
 **前端调用示例**
 ```javascript
 axios.put('/api/admin/auth/change-password', {
-    oldPassword: 'oldPass123',
-    newPassword: 'newPass456',
-    confirmPassword: 'newPass456'
+  oldPassword: 'oldPass123',
+  newPassword: 'newPass456',
+  confirmPassword: 'newPass456'
 });
 ```
 
@@ -764,11 +749,11 @@ axios.put('/api/admin/auth/change-password', {
 **前端调用示例**
 ```javascript
 axios.post('/api/admin/article', {
-    title: 'Spring Boot 实战',
-    content: '# Hello World\n...',
-    categoryId: 1,
-    tagIds: [101, 102],
-    status: 1
+  title: 'Spring Boot 实战',
+  content: '# Hello World\n...',
+  categoryId: 1,
+  tagIds: [101, 102],
+  status: 1
 });
 ```
 
@@ -923,9 +908,9 @@ axios.post('/api/admin/article', {
 **前端调用示例**
 ```javascript
 axios.delete('/api/admin/article/batch-delete', {
-    data: [100, 101, 102] // 注意：在 DELETE 请求中，数组需放在 data 属性里
+  data: [100, 101, 102] // 注意：在 DELETE 请求中，数组需放在 data 属性里
 }).then(response => {
-    console.log('批量删除成功');
+  console.log('批量删除成功');
 });
 ```
 
@@ -1085,7 +1070,7 @@ axios.delete('/api/admin/article/batch-delete', {
         "publishTime": "2026-02-01 10:00:00",
         "categoryName": "后端技术",
         "tags": [
-          { "id": 1, "name": "Java" }
+           { "id": 1, "name": "Java" }
         ]
       }
     ],
@@ -1558,6 +1543,7 @@ axios.delete('/api/admin/article/batch-delete', {
 | list[].replyNickname | string | 被回复人昵称（顶级评论为 `null`） |
 | list[].children | array | 子评论列表（所有层级子评论均平铺在此，非递归嵌套） |
 
+
 ### 7.2 获取文章评论统计 (Portal)
 
 - **接口路径**: `GET /api/blog/comment/stats/{articleId}`
@@ -1567,7 +1553,7 @@ axios.delete('/api/admin/article/batch-delete', {
 
 | 名称 | 示例 | 说明 |
 |:---|:---|:---|
-| articleId | `100` | 文章ID。若为 `0` 则获取留言板的评论统计 |
+| articleId | `1` | 文章ID。若为 `0` 则获取留言板的评论统计 |
 
 **成功响应**
 ```json
@@ -1575,8 +1561,9 @@ axios.delete('/api/admin/article/batch-delete', {
   "code": 0,
   "message": "操作成功",
   "data": {
-    "total": 128,
-    "approved": 120
+    "total": 15,
+    "rootCount": 10,
+    "replyCount": 5
   }
 }
 ```
@@ -1585,10 +1572,9 @@ axios.delete('/api/admin/article/batch-delete', {
 
 | 字段 | 类型 | 说明 |
 |:---|:---|:---|
-| total | long | 该文章的评论总数（含所有状态） |
-| approved | long | 审核通过的评论数量（状态为 `1` 的评论） |
-
----
+| total | long | 该文章的评论总数（审核通过的） |
+| rootCount | long | 顶级评论数量 |
+| replyCount | long | 回复评论数量 |
 
 ### 7.3 发表评论 / 留言 (Portal)
 
@@ -1751,8 +1737,8 @@ axios.delete('/api/admin/article/batch-delete', {
 **前端调用示例**
 ```javascript
 axios.put('/api/admin/comment/batch-audit', {
-    ids: [501, 502, 503],
-    status: 1
+  ids: [501, 502, 503],
+  status: 1
 });
 ```
 
@@ -2462,30 +2448,6 @@ GET /api/admin/statistics/visit?topPagesLimit=5
   "code": 0,
   "message": "点赞成功",
   "data": 122  // 返回最新的点赞数
-}
-```
-
-### 14.2 获取文章评论统计 (Portal)
-
-- **接口路径**: `GET /api/blog/comment/stats/{articleId}`
-- **是否认证**: 否
-
-**路径参数**
-
-| 名称 | 示例 | 说明 |
-|:---|:---|:---|
-| articleId | `1` | 文章ID |
-
-**成功响应**
-```json
-{
-  "code": 0,
-  "message": "操作成功",
-  "data": {
-    "total": 15,
-    "rootCount": 10,
-    "replyCount": 5
-  }
 }
 ```
 
