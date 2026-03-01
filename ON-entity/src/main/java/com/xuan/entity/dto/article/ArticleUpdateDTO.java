@@ -78,4 +78,18 @@ public class ArticleUpdateDTO implements Serializable {
     @NotNull(message = "状态不能为空")
     @Schema(description = "状态：0-草稿，1-发布，2-下架", example = "1", requiredMode = RequiredMode.REQUIRED)
     private Integer status;
+    
+    /**
+     * URL别名(SEO)
+     */
+    @Size(max = 200, message = "URL别名长度不能超过200字符")
+    @Schema(description = "URL别名(SEO)", example = "spring-boot-3-practice")
+    private String slug;
+    
+    /**
+     * SEO关键词
+     */
+    @Size(max = 255, message = "SEO关键词长度不能超过255字符")
+    @Schema(description = "SEO关键词", example = "Spring Boot,Java,JDK21")
+    private String keywords;
 }

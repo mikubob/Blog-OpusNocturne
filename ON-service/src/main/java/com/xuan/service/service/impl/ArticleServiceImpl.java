@@ -1,6 +1,8 @@
 package com.xuan.service.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.util.StrUtil;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -84,6 +86,16 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     public ArticleCreatVO createArticle(ArticleCreateDTO articleCreateDTO) {
         // 1.转换并且保存文章
         Article article = BeanUtil.copyProperties(articleCreateDTO, Article.class);
+        
+        // 处理slug：如果用户未提供，则自动生成
+        if (StrUtil.isBlank(article.getSlug())) {
+            String generatedSlug = generateSlugFromTitle(article.getTitle());
+            article.setSlug(ensureUniqueSlug(generatedSlug));
+        } else {
+            // 如果用户提供了slug，确保其唯一性
+            article.setSlug(ensureUniqueSlug(article.getSlug()));
+        }
+        
         if (article.getStatus().equals(PUBLISHED)) {
             // 如果文章状态为发布，则设置发布时间为当前时间
             article.setPublishTime(LocalDateTime.now());
@@ -222,8 +234,25 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         if (article == null) {
             throw new BusinessException(ARTICLE_NOT_FOUND);
         }
+        
+        // 保存原始slug，用于判断是否需要检查唯一性
+        String originalSlug = article.getSlug();
+        
         //2.更新文章基本信息
         BeanUtil.copyProperties(articleUpdateDTO, article, "id");
+        
+        // 处理slug：如果slug有变化，则需要确保唯一性
+        if (!StrUtil.equals(article.getSlug(), originalSlug)) {
+            if (StrUtil.isBlank(article.getSlug())) {
+                // 如果用户清空了slug，则根据标题重新生成
+                String generatedSlug = generateSlugFromTitle(article.getTitle());
+                article.setSlug(ensureUniqueSlug(generatedSlug));
+            } else {
+                // 如果用户修改了slug，确保其唯一性
+                article.setSlug(ensureUniqueSlug(article.getSlug()));
+            }
+        }
+        
         if (article.getStatus().equals(PUBLISHED) && article.getPublishTime() == null) {
             article.setPublishTime(LocalDateTime.now());
         }
@@ -724,5 +753,67 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
      */
     private TagVO toTagVO(Tag tag) {
         return BeanUtil.copyProperties(tag, TagVO.class);
+    }
+    
+    /**
+     * 根据标题生成slug
+     * @param title 文章标题
+     * @return 生成的slug
+     */
+    private String generateSlugFromTitle(String title) {
+        if (StrUtil.isBlank(title)) {
+            return "";
+        }
+        
+        // 转小写
+        String slug = title.toLowerCase();
+        
+        // 替换空格为横线
+        slug = slug.replaceAll("\\s+", "-");
+        
+        // 移除非字母数字和横线的字符
+        slug = slug.replaceAll("[^a-z0-9-]", "");
+        
+        // 去除首尾横线
+        slug = slug.trim().replaceAll("^-+|-+$", "");
+        
+        // 限制长度
+        if (slug.length() > 100) {
+            slug = slug.substring(0, 100);
+        }
+        
+        return slug;
+    }
+    
+    /**
+     * 确保slug的唯一性
+     * @param slug 原始slug
+     * @return 唯一的slug
+     */
+    private String ensureUniqueSlug(String slug) {
+        if (StrUtil.isBlank(slug)) {
+            return slug;
+        }
+        
+        String originalSlug = slug;
+        int suffix = 1;
+        
+        // 检查slug是否已存在
+        while (true) {
+            LambdaQueryWrapper<Article> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(Article::getSlug, slug);
+            long count = count(wrapper);
+            
+            if (count == 0) {
+                // slug不存在，可以使用
+                break;
+            }
+            
+            // slug已存在，添加后缀
+            slug = originalSlug + "-" + suffix;
+            suffix++;
+        }
+        
+        return slug;
     }
 }

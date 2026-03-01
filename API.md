@@ -736,6 +736,8 @@ axios.put('/api/admin/auth/change-password', {
 | coverImg | string | 否 | 封面图片URL |
 | isTop | int | 否 | 是否置顶：1-是，0-否 |
 | status | int | 是 | 状态：0-草稿，1-发布，2-下架 |
+| slug | string | 否 | URL别名(SEO)，如 `spring-boot-3-practice`。**如果不填写，系统会根据标题自动生成** |
+| keywords | string | 否 | SEO关键词，多个关键词用逗号分隔，如 `Spring Boot,Java`。**- 由作者完全手动填写，系统不会自动生成，多个关键词用逗号分隔，如 Spring Boot,Java,JDK21** |
 
 **标签关联说明**
 - 通过 `tagIds` 参数管理 `article_tag` 关联关系
@@ -845,6 +847,8 @@ axios.post('/api/admin/article', {
 | coverImg | string | 否 | 封面图片URL |
 | isTop | int | 否 | 是否置顶 |
 | status | int | 是 | 状态：0-草稿，1-发布，2-下架 |
+| slug | string | 否 | URL别名(SEO)，如 `spring-boot-3-practice`。**如果不填写，系统会根据标题自动生成** |
+| keywords | string | 否 | SEO关键词，多个关键词用逗号分隔，如 `Spring Boot,Java`。**由作者手动填写，用于SEO优化** |
 
 **成功响应**
 ```json
@@ -1694,7 +1698,6 @@ axios.delete('/api/admin/article/batch-delete', {
 | parentId | long | 否 | 父评论ID，回复时必填 |
 | nickname | string | 是 | 昵称 |
 | email | string | 否 | 邮箱（用于接收回复通知） |
-| website | string | 否 | 个人网站地址 |
 
 **成功响应**
 ```json

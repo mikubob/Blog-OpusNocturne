@@ -274,7 +274,7 @@ create table visit_log (
 drop table if exists sys_oper_log;
 create table sys_oper_log (
                               id bigint not null auto_increment comment '主键id',
-                              title varchar(50) default '' comment '模块标题',
+                              module varchar(50) default '' comment '模块标题',
                               business_type varchar(20) default '' comment '业务类型（0其它 1新增 2修改 3删除）',
                               method varchar(255) default '' comment '方法名称',
                               request_method varchar(10) default '' comment '请求方式',

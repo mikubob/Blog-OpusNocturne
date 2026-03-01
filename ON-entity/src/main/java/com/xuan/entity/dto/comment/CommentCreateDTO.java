@@ -66,10 +66,5 @@ public class CommentCreateDTO implements Serializable {
     @Schema(description = "邮箱", example = "user@example.com")
     private String email;
 
-    /**
-     * 个人网站地址
-     */
-    @Size(max = 200, message = "网站地址长度不能超过200字符")
-    @Schema(description = "个人网站地址", example = "https://example.com")
-    private String website;
+
 }

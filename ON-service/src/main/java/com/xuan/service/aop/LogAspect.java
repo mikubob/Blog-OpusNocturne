@@ -86,7 +86,7 @@ public class LogAspect {
             String username, Object result, Integer status, String errorMsg, long costTime) {
         try {
             SysOperLog operLog = SysOperLog.builder()
-                    .title(getControllerName(joinPoint))
+                    .module(getControllerName(joinPoint))
                     .businessType(getBusinessType(method))
                     .method(joinPoint.getSignature().toShortString())
                     .requestMethod(method)

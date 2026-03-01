@@ -36,7 +36,7 @@ public class SysOperLog implements Serializable {
 
     /** 模块标题 */
     @Schema(description = "模块标题",example = "系统管理")
-    private String title;
+    private String module;
 
     /** 业务类型（0其它 1新增 2修改 3删除） */
     @Schema(description = "业务类型（0其它 1新增 2修改 3删除）",example = "1")
