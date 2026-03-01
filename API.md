@@ -2,8 +2,8 @@
 
 本文档详细描述了 OpusNocturne 博客系统的后端 API 接口。
 
-> **最后更新**: 2026-02-20
-> **版本**: v2.1
+> **最后更新**: 2026-03-01
+> **版本**: v2.5.0
 
 ## 目录
 
@@ -19,13 +19,9 @@
 10. [系统设置 (System Setting)](#10-系统设置-system-setting)
 11. [站点统计 (Site Statistics)](#11-站点统计-site-statistics)
 12. [友情链接 (Friend Link)](#12-友情链接-friend-link)
-13. [文章归档 (Article Archive)](#13-文章归档-article-archive)
-14. [互动功能 (Interaction)](#14-互动功能-interaction)
-15. [多媒体管理 (Media - Admin)](#15-多媒体管理-media---admin)
-16. [系统管理 (System - Admin)](#16-系统管理-system---admin)
-    - [16.5 获取服务器监控信息 (Admin)](#165-获取服务器监控信息-admin)
-17. [待实现接口 (Project Roadmap)](#17-待实现接口-project-roadmap)
-18. [公共数据模型](#18-公共数据模型)
+13. [多媒体管理 (Media - Admin)](#13-多媒体管理-media---admin)
+14. [系统管理 (System - Admin)](#14-系统管理-system---admin)
+15. [待实现接口 (Project Roadmap)](#15-待实现接口-project-roadmap)
 
 ---
 
@@ -1125,6 +1121,59 @@ axios.delete('/api/admin/article/batch-delete', {
   "code": 5001,
   "message": "文章不存在或已被删除",
   "data": null
+}
+```
+
+### 5.11 获取文章归档 (Portal)
+
+- **接口路径**: `GET /api/blog/article/archive`
+- **是否认证**: 否
+- **功能说明**: 将文章按照“年份-月份”进行分组展示，用于归档页面。
+
+**成功响应**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": [
+    {
+      "year": "2023",
+      "months": [
+        {
+          "month": "10",
+          "count": 5,
+          "articles": [
+            {
+              "id": 1,
+              "title": "Spring Boot 3 实战",
+              "createTime": "2023-10-01 12:00:00",
+              "day": "01"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+### 5.12 文章点赞 (Portal)
+
+- **接口路径**: `POST /api/blog/article/{id}/like`
+- **是否认证**: 否（通过 IP 限制重复点赞）
+
+**路径参数**
+
+| 名称 | 示例 | 说明 |
+|:---|:---|:---|
+| id | `1` | 文章ID |
+
+**成功响应**
+```json
+{
+  "code": 0,
+  "message": "点赞成功",
+  "data": 122  // 返回最新的点赞数
 }
 ```
 
@@ -2433,70 +2482,14 @@ GET /api/admin/statistics/visit?topPagesLimit=5
 
 
 
-## 13. 文章归档 (Article Archive)
 
-### 13.1 获取文章归档 (Portal)
 
-- **接口路径**: `GET /api/blog/article/archive`
-- **是否认证**: 否
-- **功能说明**: 将文章按照“年份-月份”进行分组展示，用于归档页面。
-
-**成功响应**
-```json
-{
-  "code": 0,
-  "message": "操作成功",
-  "data": [
-    {
-      "year": "2023",
-      "months": [
-        {
-          "month": "10",
-          "count": 5,
-          "articles": [
-            {
-              "id": 1,
-              "title": "Spring Boot 3 实战",
-              "createTime": "2023-10-01 12:00:00",
-              "day": "01"
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}
-```
 
 ---
 
-## 14. 互动功能 (Interaction)
+## 13. 多媒体管理 (Media - Admin)
 
-### 14.1 文章点赞 (Portal)
-
-- **接口路径**: `POST /api/blog/article/{id}/like`
-- **是否认证**: 否（通过 IP 限制重复点赞）
-
-**路径参数**
-
-| 名称 | 示例 | 说明 |
-|:---|:---|:---|
-| id | `1` | 文章ID |
-
-**成功响应**
-```json
-{
-  "code": 0,
-  "message": "点赞成功",
-  "data": 122  // 返回最新的点赞数
-}
-```
-
----
-
-## 15. 多媒体管理 (Media - Admin)
-
-### 15.1 上传文件 (Admin)
+### 13.1 上传文件 (Admin)
 
 - **接口路径**: `POST /api/admin/attachment/upload`
 - **是否认证**: 是
@@ -2547,7 +2540,7 @@ GET /api/admin/statistics/visit?topPagesLimit=5
 
 ---
 
-### 15.2 分页获取附件列表 (Admin)
+### 13.2 分页获取附件列表 (Admin)
 
 - **接口路径**: `GET /api/admin/attachment/page`
 - **是否认证**: 是
@@ -2592,7 +2585,7 @@ GET /api/admin/statistics/visit?topPagesLimit=5
 
 ---
 
-### 15.3 删除附件 (Admin)
+### 13.3 删除附件 (Admin)
 
 - **接口路径**: `DELETE /api/admin/attachment/{id}`
 - **是否认证**: 是
@@ -2622,7 +2615,7 @@ GET /api/admin/statistics/visit?topPagesLimit=5
 
 ---
 
-### 15.4 批量删除附件 (Admin)
+### 13.4 批量删除附件 (Admin)
 
 - **接口路径**: `DELETE /api/admin/attachment/batch`
 - **是否认证**: 是
@@ -2653,9 +2646,9 @@ GET /api/admin/statistics/visit?topPagesLimit=5
 
 ---
 
-## 16. 系统管理 (System - Admin)
+## 14. 系统管理 (System - Admin)
 
-### 16.1 修改登录密码 (Admin)
+### 14.1 修改登录密码 (Admin)
 
 - **接口路径**: `PUT /api/admin/auth/change-password`
 - **是否认证**: 是
@@ -2678,7 +2671,7 @@ GET /api/admin/statistics/visit?topPagesLimit=5
 }
 ```
 
-### 16.2 查看操作日志 (Admin)
+### 14.2 查看操作日志 (Admin)
 
 - **接口路径**: `GET /api/admin/log/operation`
 - **是否认证**: 是
@@ -2717,56 +2710,11 @@ GET /api/admin/statistics/visit?topPagesLimit=5
 }
 ```
 
-### 16.3 获取关于我 (Portal)
 
-- **接口路径**: `GET /api/blog/about`
-- **是否认证**: 否
-
-**成功响应**
-```json
-{
-  "code": 0,
-  "message": "操作成功",
-  "data": "# About Me\n这里是关于我的介绍..."
-}
-```
-
-> ⚠️ **注意**：返回值 `data` 直接为 Markdown 格式字符串。若未配置关于我内容，返回默认值 `"Just a blog."`。
 
 ---
 
-### 16.4 更新关于我 (Admin)
-
-- **接口路径**: `PUT /api/admin/about`
-- **是否认证**: 是
-
-**请求体 (JSON)**
-
-| 字段名 | 类型 | 必填 | 说明 |
-|:---|:---|:---|:---|
-| aboutMe | string | 否 | 关于我内容（Markdown 格式） |
-
-> 💡 **说明**：该接口复用 `SystemSettingDTO`，更新系统设置表中的 `about_me` 字段。也可同时传入其他系统设置字段进行批量更新。
-
-**请求示例**
-```json
-{
-  "aboutMe": "# 关于我\n\n## 简介\n一名热爱技术的开发者..."
-}
-```
-
-**成功响应**
-```json
-{
-  "code": 0,
-  "message": "操作成功",
-  "data": null
-}
-```
-
----
-
-### 16.5 获取服务器监控信息 (Admin)
+### 14.3 获取服务器监控信息 (Admin)
 
 - **接口路径**: `GET /api/admin/monitor/server`
 - **是否认证**: 是
@@ -2828,7 +2776,7 @@ GET /api/admin/statistics/visit?topPagesLimit=5
 
 ---
 
-## 17. 待实现接口 (Project Roadmap)
+## 15. 待实现接口 (Project Roadmap)
 
 以下功能将在后续版本中逐步完善：
 
@@ -2839,94 +2787,6 @@ GET /api/admin/statistics/visit?topPagesLimit=5
 2. **全文搜索 (Full-text Search)**
     - 计划使用 Elasticsearch 或 MySQL FullText 实现文章内容的全文检索。
 
----
-
-## 18. 公共数据模型
-
-### 18.1 分页结果 (PageResult<T>)
-
-**Schema 文件路径**: `schemas/PageResult.json`
-
-**示例**:
-```json
-{
-  "records": [
-    {
-      "id": 1,
-      "title": "Spring Boot 实战"
-    }
-  ],
-  "total": 100,
-  "size": 10,
-  "current": 1,
-  "pages": 10
-}
-```
-
-**引用方式**: `$ref: #/components/schemas/PageResult«Article»`
-
-### 18.2 趋势数据 (TrendData<T>)
-
-**Schema 文件路径**: `schemas/TrendData.json`
-
-**示例**:
-```json
-{
-  "labels": ["1月", "2月", "3月"],
-  "data": [10, 15, 8]
-}
-```
-
-**引用方式**: `$ref: #/components/schemas/TrendData`
-
-### 18.3 统计概览 (StatisticsOverview)
-
-**Schema 文件路径**: `schemas/StatisticsOverview.json`
-
-**示例**:
-```json
-{
-  "articleCount": 100,
-  "categoryCount": 10,
-  "tagCount": 50,
-  "commentCount": 200,
-  "userCount": 5,
-  "totalViewCount": 5000
-}
-```
-
-**引用方式**: `$ref: #/components/schemas/StatisticsOverview`
-
-### 18.4 访问趋势项 (VisitTrendItem)
-
-**Schema 文件路径**: `schemas/VisitTrendItem.json`
-
-**示例**:
-```json
-{
-  "date": "2026-02-10",
-  "visits": 120,
-  "pageViews": 250
-}
-```
-
-**引用方式**: `$ref: #/components/schemas/VisitTrendItem`
-
-### 18.5 统一错误体 (ErrorDetail)
-
-**Schema 文件路径**: `schemas/ErrorDetail.json`
-
-**示例**:
-```json
-{
-  "code": 400,
-  "message": "请求参数错误",
-  "field": "username",
-  "helpDocUrl": "https://docs.example.com/errors/400"
-}
-```
-
-**引用方式**: `$ref: #/components/schemas/ErrorDetail`
 
 ---
 
@@ -2934,6 +2794,7 @@ GET /api/admin/statistics/visit?topPagesLimit=5
 
 | 版本号 | 日期 | 变更人 | 变更摘要 | 兼容级别 |
 |:---:|:---:|:---:|:---|:---|
+| **2.5.0** | 2026-02-28 | Admin | 合并了若干接口，删除了冗余的不必要接口；更新了目录结构 | Compatible |
 | **2.4.0** | 2026-02-28 | Admin | 删除旧第8节「文件上传」接口（已由第15节多媒体管理 `POST /api/admin/attachment/upload` 替代）；章节编号整体前移（原9-19节 → 8-18节）；同步更新目录与变更记录引用 | Compatible |
 | **2.3.0** | 2026-02-28 | Admin | 新增 16.5 节「获取服务器监控信息」接口文档（`GET /api/admin/monitor/server`），补充 CPU/内存/系统三维度响应字段说明；更新目录子条目 | Compatible |
 | **2.2.0** | 2026-02-27 | Admin | 重构第15节多媒体管理：新增上传(15.1)、批量删除(15.4)接口；补全附件字段说明、bizType/bizId 说明及失败响应；接口编号整体顺移 | Compatible |
