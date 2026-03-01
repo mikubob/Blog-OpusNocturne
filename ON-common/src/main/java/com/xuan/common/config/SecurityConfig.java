@@ -45,15 +45,15 @@ public class SecurityConfig {
                 .accessDeniedHandler(accessDeniedHandler));
 
         // 配置请求路径放行规则
-        // 当前阶段先全部放行，后续开启细粒度控制
         http.authorizeHttpRequests(auth -> auth
-                // TODO 开放阶段，先全部放行。后续按以下规则开启权限控制：
-                // .requestMatchers("/api/admin/auth/login").permitAll()
-                // .requestMatchers("/doc.html", "/webjars/**", "/v3/api-docs/**",
-                // "/swagger-resources/**").permitAll()
-                // .requestMatchers("/api/blog/**").permitAll()
-                // .anyRequest().authenticated()
-                .anyRequest().permitAll());
+                // 认证相关接口 - 无需认证
+                .requestMatchers("/api/admin/auth/login", "/api/admin/auth/refresh").permitAll()
+                // 前台公开接口 - 无需认证
+                .requestMatchers("/api/blog/**").permitAll()
+                // 静态资源 - 无需认证
+                .requestMatchers("/uploads/**", "/static/**", "/favicon.ico").permitAll()
+                // 其他所有接口 - 需要认证
+                .anyRequest().authenticated());
 
         return http.build();
     }
