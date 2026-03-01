@@ -1,4 +1,3 @@
-/*
 package com.xuan.service.aop;
 
 import com.alibaba.fastjson2.JSON;
@@ -17,14 +16,14 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.time.LocalDateTime;
 
-*/
 /**
  * 接口日志切面
  * 自动记录所有 Controller 请求的方法名、参数、耗时以及持久化到操作日志表
  *
  * @author 玄〤
  * @since 2026-02-21
- *//*
+ **/
+
 
 @Aspect
 @Component
@@ -34,10 +33,9 @@ public class LogAspect {
 
     private final SysOperLogMapper operLogMapper;
 
-    */
 /**
-     * 切入点：所有 Controller 包下的方法
-     *//*
+     * 切入点：所有 Controller 包下的方法*/
+
 
     @Pointcut("execution(* com.xuan.service.controller..*.*(..))")
     public void controllerPointcut() {
@@ -123,4 +121,3 @@ public class LogAspect {
         };
     }
 }
-*/

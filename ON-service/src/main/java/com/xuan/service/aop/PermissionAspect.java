@@ -1,4 +1,3 @@
-/*
 package com.xuan.service.aop;
 
 import com.xuan.common.enums.ErrorCode;
@@ -21,14 +20,14 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.List;
 
-*/
 /**
  * 权限校验切面
  * 配合自定义注解 @RequirePermission 实现接口级权限控制
  *
  * @author 玄〤
  * @since 2026-02-20
- *//*
+ **/
+
 
 @Aspect
 @Component
@@ -38,26 +37,23 @@ public class PermissionAspect {
 
     private final SysPermissionMapper sysPermissionMapper;
 
-    */
 /**
-     * 自定义权限注解
-     * 标注在 Controller 方法上，指定需要的权限码
-     *//*
+ * 自定义权限注解
+ * 标注在 Controller 方法上，指定需要的权限码
+ **/
+
 
     @Target(ElementType.METHOD)
     @Retention(RetentionPolicy.RUNTIME)
     @Documented
     public @interface RequirePermission {
-        */
-/** 所需权限码，如 "blog:article:add" *//*
+//所需权限码，如 "blog:article:add"
 
         String value();
     }
 
-    */
-/**
-     * 在带有 @RequirePermission 注解的方法执行前校验权限
-     *//*
+//在带有 @RequirePermission 注解的方法执行前校验权限
+
 
     @Before("@annotation(requirePermission)")
     public void checkPermission(JoinPoint joinPoint, RequirePermission requirePermission) {
@@ -87,4 +83,3 @@ public class PermissionAspect {
         }
     }
 }
-*/

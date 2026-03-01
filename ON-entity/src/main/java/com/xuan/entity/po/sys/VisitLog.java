@@ -40,7 +40,7 @@ public class VisitLog extends BaseEntity {
     /**
      * 访问时间
      */
-    @Schema(description = "访问时间", example = "2026-02-17T10:00:00")
+    @Schema(description = "访问时间", example = "2026-02-17 10:00:00")
     private LocalDateTime visitTime;
 
     /**
