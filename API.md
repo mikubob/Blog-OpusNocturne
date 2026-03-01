@@ -198,7 +198,7 @@ sequenceDiagram
 | 日期 | `yyyy-MM-dd` | `2026-02-20` |
 
 > ⚠️ **注意**：前端发送的时间参数请同样使用上述格式，避免因格式差异导致解析失败。
-> 
+>
 > 对应 Spring Boot 配置：
 > ```yaml
 > spring.jackson.date-format: yyyy-MM-dd HH:mm:ss
@@ -323,11 +323,11 @@ Content-Type: application/json
 **前端调用示例**
 ```javascript
 axios.post('/api/admin/auth/login', {
-  username: 'admin',
-  password: 'admin123'
+    username: 'admin',
+    password: 'admin123'
 }).then(response => {
-  const token = response.data.data.token;
-  localStorage.setItem('token', token);
+    const token = response.data.data.token;
+    localStorage.setItem('token', token);
 });
 ```
 
@@ -472,9 +472,9 @@ axios.post('/api/admin/auth/login', {
 **前端调用示例**
 ```javascript
 axios.put('/api/admin/auth/change-password', {
-  oldPassword: 'oldPass123',
-  newPassword: 'newPass456',
-  confirmPassword: 'newPass456'
+    oldPassword: 'oldPass123',
+    newPassword: 'newPass456',
+    confirmPassword: 'newPass456'
 });
 ```
 
@@ -764,11 +764,11 @@ axios.put('/api/admin/auth/change-password', {
 **前端调用示例**
 ```javascript
 axios.post('/api/admin/article', {
-  title: 'Spring Boot 实战',
-  content: '# Hello World\n...',
-  categoryId: 1,
-  tagIds: [101, 102],
-  status: 1
+    title: 'Spring Boot 实战',
+    content: '# Hello World\n...',
+    categoryId: 1,
+    tagIds: [101, 102],
+    status: 1
 });
 ```
 
@@ -923,9 +923,9 @@ axios.post('/api/admin/article', {
 **前端调用示例**
 ```javascript
 axios.delete('/api/admin/article/batch-delete', {
-  data: [100, 101, 102] // 注意：在 DELETE 请求中，数组需放在 data 属性里
+    data: [100, 101, 102] // 注意：在 DELETE 请求中，数组需放在 data 属性里
 }).then(response => {
-  console.log('批量删除成功');
+    console.log('批量删除成功');
 });
 ```
 
@@ -1085,7 +1085,7 @@ axios.delete('/api/admin/article/batch-delete', {
         "publishTime": "2026-02-01 10:00:00",
         "categoryName": "后端技术",
         "tags": [
-           { "id": 1, "name": "Java" }
+          { "id": 1, "name": "Java" }
         ]
       }
     ],
@@ -1751,8 +1751,8 @@ axios.delete('/api/admin/article/batch-delete', {
 **前端调用示例**
 ```javascript
 axios.put('/api/admin/comment/batch-audit', {
-  ids: [501, 502, 503],
-  status: 1
+    ids: [501, 502, 503],
+    status: 1
 });
 ```
 
@@ -2241,6 +2241,20 @@ axios.put('/api/admin/comment/batch-audit', {
 - **接口路径**: `GET /api/admin/statistics/visit`
 - **是否认证**: 是
 
+**请求参数**
+| 参数名 | 类型 | 必填 | 默认值 | 说明 |
+| :--- | :--- | :--- | :--- | :--- |
+| topPagesLimit | Integer | 否 | 10 | 热门页面数量限制 |
+
+**请求示例**
+```bash
+# 默认获取 10 个热门页面
+GET /api/admin/statistics/visit
+
+# 自定义获取 5 个热门页面
+GET /api/admin/statistics/visit?topPagesLimit=5
+```
+
 **成功响应**
 ```json
 {
@@ -2250,12 +2264,12 @@ axios.put('/api/admin/comment/batch-audit', {
     "totalVisits": 1000,
     "totalPageViews": 2000,
     "trend": [
-      { "date": "2026-02-10", "visits": 120, "pageViews": 250 },
-      { "date": "2026-02-11", "visits": 150, "pageViews": 300 }
+      { "visitDate": "2026-02-10", "pv": 250, "uv": 120 },
+      { "visitDate": "2026-02-11", "pv": 300, "uv": 150 }
     ],
     "topPages": [
-      { "pageUrl": "/blog/article/1", "views": 500 },
-      { "pageUrl": "/blog/article/2", "views": 300 }
+      { "pageUrl": "/blog/article/1", "count": 500 },
+      { "pageUrl": "/blog/article/2", "count": 300 }
     ]
   }
 }
@@ -2816,11 +2830,11 @@ axios.put('/api/admin/comment/batch-audit', {
 以下功能将在后续版本中逐步完善：
 
 1. **操作日志 (Operation Log)**
-   - 数据库表结构已创建 (`sys_oper_log`)
-   - 待实现: Aspect 切面记录入库、查询接口 `GET /api/admin/log/operation`
+    - 数据库表结构已创建 (`sys_oper_log`)
+    - 待实现: Aspect 切面记录入库、查询接口 `GET /api/admin/log/operation`
 
 2. **全文搜索 (Full-text Search)**
-   - 计划使用 Elasticsearch 或 MySQL FullText 实现文章内容的全文检索。
+    - 计划使用 Elasticsearch 或 MySQL FullText 实现文章内容的全文检索。
 
 ---
 
@@ -2830,7 +2844,7 @@ axios.put('/api/admin/comment/batch-audit', {
 
 **Schema 文件路径**: `schemas/PageResult.json`
 
-**示例**: 
+**示例**:
 ```json
 {
   "records": [
@@ -2852,7 +2866,7 @@ axios.put('/api/admin/comment/batch-audit', {
 
 **Schema 文件路径**: `schemas/TrendData.json`
 
-**示例**: 
+**示例**:
 ```json
 {
   "labels": ["1月", "2月", "3月"],
@@ -2866,7 +2880,7 @@ axios.put('/api/admin/comment/batch-audit', {
 
 **Schema 文件路径**: `schemas/StatisticsOverview.json`
 
-**示例**: 
+**示例**:
 ```json
 {
   "articleCount": 100,
@@ -2884,7 +2898,7 @@ axios.put('/api/admin/comment/batch-audit', {
 
 **Schema 文件路径**: `schemas/VisitTrendItem.json`
 
-**示例**: 
+**示例**:
 ```json
 {
   "date": "2026-02-10",
@@ -2899,7 +2913,7 @@ axios.put('/api/admin/comment/batch-audit', {
 
 **Schema 文件路径**: `schemas/ErrorDetail.json`
 
-**示例**: 
+**示例**:
 ```json
 {
   "code": 400,
