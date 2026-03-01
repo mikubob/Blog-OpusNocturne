@@ -58,6 +58,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
      * Step2 - 内层批量查：用 IN(rootIds) 一次查出这些顶级评论下的全部子评论。
      *         子评论数量受每页顶级评论数量约束，不会无限膨胀。
      * Step3 - 内存组装：将子评论挂载到对应顶级节点上，返回树形数据。
+     *         统计每个顶级评论的子评论总数，并只显示部分子评论。
      * </pre>
      *
      * @param articleId 文章ID
@@ -120,16 +121,9 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         //2.获取评论总数
         Long total=count(wrapper);
 
-        //3.获取根评论的数量
-        LambdaQueryWrapper<Comment> rootWrapper = wrapper.clone();
-        rootWrapper.isNull(Comment::getRootParentId);
-        Long rootCount = count(rootWrapper);
-
-        //4.构建返回结果
+        //3.构建返回结果
         Map<String, Long> result = new HashMap<>();
         result.put("total", total!=null?total:0L);
-        result.put("rootCount", rootCount!=null?rootCount:0L);
-        result.put("replyCount",(total!=null?total:0L)-(rootCount!=null?rootCount:0L));
         return result;
     }
 
@@ -318,6 +312,8 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
                         (e, r) -> e));
 
         // ===== Step2: 遍历子评论，填充被回复人昵称，并挂载到对应的根节点下 =====
+        // 统计每个顶级评论的子评论数
+        Map<Long, List<CommentTreeVO>> childMap = new HashMap<>();
         for (Comment child : childComments) {
             // parentId 指向当前评论直接回复的那条评论（可能是顶级，也可能是另一条子评论）
             String replyNickname = null;
@@ -331,17 +327,68 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
             CommentTreeVO childVO = toVO(child, replyNickname);
 
             // rootParentId 即本条子评论所属顶级评论的 ID
-            CommentTreeVO rootVO = rootVOMap.get(child.getRootParentId());
-            if (rootVO != null) {
-                rootVO.getChildren().add(childVO);
-            }
-            // rootVO 为 null 属于异常数据（IN 查询已限定范围，理论上不会出现），直接跳过
+            Long rootParentId = child.getRootParentId();
+            childMap.computeIfAbsent(rootParentId, k -> new ArrayList<>()).add(childVO);
         }
 
-        // ===== Step3: 按 rootComments 的原始顺序返回根节点列表（保持数据库排序）=====
+        // ===== Step3: 为每个顶级评论设置子评论总数，并初始不显示子评论 =====
+        for (Long rootId : rootVOMap.keySet()) {
+            CommentTreeVO rootVO = rootVOMap.get(rootId);
+            List<CommentTreeVO> children = childMap.getOrDefault(rootId, new ArrayList<>());
+            rootVO.setChildCount(children.size());
+            // 初始不显示子评论
+            rootVO.setChildren(new ArrayList<>());
+        }
+
+        // ===== Step4: 按 rootComments 的原始顺序返回根节点列表（保持数据库排序）=====
         return rootComments.stream()
                 .map(c -> rootVOMap.get(c.getId()))
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * 分页获取子评论
+     *
+     * @param rootParentId 顶级评论ID
+     * @param articleId 文章ID
+     * @param current 当前页码
+     * @param size 每页条数（第一次3条，后续10条）
+     * @return 子评论列表
+     */
+    @Override
+    public List<CommentTreeVO> getChildComments(Long rootParentId, Long articleId, int current, int size) {
+        // 计算分页参数
+        int offset = (current - 1) * size;
+        
+        // 查询子评论
+        List<Comment> childComments = list(
+                new LambdaQueryWrapper<Comment>()
+                        .eq(Comment::getArticleId, articleId)
+                        .eq(Comment::getStatus, APPROVED)
+                        .eq(Comment::getRootParentId, rootParentId)
+                        .orderByAsc(Comment::getCreateTime)
+                        .last("LIMIT " + offset + ", " + size));
+        
+        // 构建评论实体索引，用于查找被回复人昵称
+        Map<Long, Comment> commentMap = new HashMap<>();
+        for (Comment comment : childComments) {
+            commentMap.put(comment.getId(), comment);
+        }
+        
+        // 转换为VO并设置被回复人昵称
+        List<CommentTreeVO> childVOs = new ArrayList<>();
+        for (Comment child : childComments) {
+            String replyNickname = null;
+            if (child.getParentId() != null) {
+                Comment parent = commentMap.get(child.getParentId());
+                if (parent != null) {
+                    replyNickname = parent.getNickname();
+                }
+            }
+            childVOs.add(toVO(child, replyNickname));
+        }
+        
+        return childVOs;
     }
 
     /**

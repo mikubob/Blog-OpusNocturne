@@ -8,6 +8,7 @@ import com.xuan.entity.dto.comment.CommentPageQueryDTO;
 import com.xuan.entity.po.interact.Comment;
 import com.xuan.entity.vo.comment.CommentAdminVO;
 import com.xuan.entity.vo.comment.CommentPageVO;
+import com.xuan.entity.vo.comment.CommentTreeVO;
 
 import java.util.List;
 import java.util.Map;
@@ -38,6 +39,17 @@ public interface ICommentService extends IService<Comment> {
      * @return 统计Map
      */
     Map<String, Long> getArticleCommentStats(Long articleId);
+
+    /**
+     * 分页获取子评论
+     * 
+     * @param rootParentId 顶级评论ID
+     * @param articleId 文章ID
+     * @param current 当前页码
+     * @param size 每页条数（第一次3条，后续10条）
+     * @return 子评论列表
+     */
+    List<CommentTreeVO> getChildComments(Long rootParentId, Long articleId, int current, int size);
 
     /** 前台：发表评论 */
     void createComment(CommentCreateDTO dto, String ipAddress, String userAgent);

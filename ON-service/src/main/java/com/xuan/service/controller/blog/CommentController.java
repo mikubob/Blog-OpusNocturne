@@ -3,7 +3,9 @@ package com.xuan.service.controller.blog;
 import com.xuan.common.domain.Result;
 import com.xuan.entity.dto.comment.CommentCreateDTO;
 import com.xuan.entity.vo.comment.CommentPageVO;
+import com.xuan.entity.vo.comment.CommentTreeVO;
 import com.xuan.service.service.ICommentService;
+import java.util.List;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -41,6 +43,16 @@ public class CommentController {
             @Parameter(description = "当前页码，从1开始") @RequestParam(defaultValue = "1") int current,
             @Parameter(description = "每页顶级评论数") @RequestParam(defaultValue = "10") int size) {
         return Result.success(commentService.getCommentTree(articleId, current, size));
+    }
+
+    @Operation(summary = "分页获取子评论")
+    @GetMapping("/child/{rootParentId}")
+    public Result<List<CommentTreeVO>> getChildComments(
+            @PathVariable Long rootParentId,
+            @Parameter(description = "文章ID") @RequestParam Long articleId,
+            @Parameter(description = "当前页码，从1开始") @RequestParam(defaultValue = "1") int current,
+            @Parameter(description = "每页条数，默认3条") @RequestParam(defaultValue = "3") int size) {
+        return Result.success(commentService.getChildComments(rootParentId, articleId, current, size));
     }
 
     @Operation(summary = "获取文章评论统计")

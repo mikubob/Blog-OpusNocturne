@@ -52,8 +52,14 @@ public class CommentTreeVO implements Serializable {
     private String replyNickname;
     
     /**
-     * 子评论列表
+     * 子评论列表（仅显示部分）
      */
-    @Schema(description = "子评论列表")
+    @Schema(description = "子评论列表（仅显示部分）")
     private List<CommentTreeVO> children;
+
+    /**
+     * 子评论总数
+     */
+    @Schema(description = "子评论总数", example = "5")
+    private Integer childCount;
 }
