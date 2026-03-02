@@ -1,6 +1,7 @@
 package com.xuan.service.aop;
 
 import com.alibaba.fastjson2.JSON;
+import com.xuan.common.utils.IpUtils;
 import com.xuan.entity.po.sys.SysOperLog;
 import com.xuan.service.mapper.SysOperLogMapper;
 import jakarta.servlet.http.HttpServletRequest;
@@ -52,12 +53,14 @@ public class LogAspect {
         String method = request != null ? request.getMethod() : "";
         String uri = request != null ? request.getRequestURI() : "";
         String ip = request != null ? request.getRemoteAddr() : "";
+        // 解析IP地址为具体地理位置
+        String ipLocation = IpUtils.getIpLocation(ip);
         String username = request != null ? (String) request.getAttribute("username") : "anonymous";
 
         String className = joinPoint.getTarget().getClass().getSimpleName();
         String methodName = joinPoint.getSignature().getName();
 
-        log.info("====> 请求: {} {} | IP: {} | 方法: {}.{}", method, uri, ip, className, methodName);
+        log.info("====> 请求: {} {} | IP: {} | 方法: {}.{}", method, uri, ipLocation, className, methodName);
 
         Object result = null;
         Integer status = 1;
@@ -75,14 +78,14 @@ public class LogAspect {
             log.info("{}: {}.{} | 耗时: {}ms", status == 1 ? "<==== 响应" : "<==== 异常", className, methodName, costTime);
 
             // 异步持久化操作日志 (目前先采用同步)
-            // 记录所有管理端操作以及非 GET 请求
-            if (uri.contains("/admin/") || !"GET".equalsIgnoreCase(method)) {
-                saveLog(joinPoint, method, uri, ip, username, result, status, errorMsg, costTime);
-            }
+        // 记录所有管理端操作以及非 GET 请求
+        if (uri.contains("/admin/") || !"GET".equalsIgnoreCase(method)) {
+            saveLog(joinPoint, method, uri, ipLocation, username, result, status, errorMsg, costTime);
+        }
         }
     }
 
-    private void saveLog(ProceedingJoinPoint joinPoint, String method, String uri, String ip,
+    private void saveLog(ProceedingJoinPoint joinPoint, String method, String uri, String ipLocation,
             String username, Object result, Integer status, String errorMsg, long costTime) {
         try {
             SysOperLog operLog = SysOperLog.builder()
@@ -92,7 +95,7 @@ public class LogAspect {
                     .requestMethod(method)
                     .operName(username)
                     .operUrl(uri)
-                    .operIp(ip)
+                    .operIp(ipLocation)
                     .operParam(JSON.toJSONString(joinPoint.getArgs()))
                     .jsonResult(result != null ? JSON.toJSONString(result) : null)
                     .status(status)
