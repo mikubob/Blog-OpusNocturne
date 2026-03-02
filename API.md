@@ -31,7 +31,12 @@
 开发环境：`http://localhost:8080`
 
 ### 认证方式
-除"前台展示"类接口外，大多数管理接口需要进行 JWT 认证。
+系统采用 JWT 无状态认证。
+- **无需认证**: 前台展示类接口（所有 GET 请求）。
+- **必须认证**: 
+  - **交互类接口**: 发表评论、申请友链（POST 请求）。
+  - **管理类接口**: 所有以 `/api/admin/**` 开头的后台管理接口。
+
 请在 HTTP 请求头中携带 Token：
 ```http
 Authorization: Bearer <Your-Token>
@@ -1708,19 +1713,45 @@ axios.delete('/api/admin/article/batch-delete', {
 
 **请求体 (JSON)**
 
-| 字段名 | 类型 | 必填 | 说明 |
-|:---|:---|:---|:---|
-| articleId | long | 否 | 文章ID。**传 `0` 代表留言板/树洞** |
-| content | string | 是 | 评论内容 |
-| parentId | long | 否 | 父评论ID，回复时必填 |
+| 字段名 | 类型 | 必填 | 说明 | 示例 |
+|:---|:---|:---|:---|:---|
+| articleId | long | 否 | 文章ID。**传 `0` 代表留言板/树洞** | `100` |
+| content | string | 是 | 评论内容 | `非常有深度的文章！` |
+| parentId | long | 否 | 父评论ID，回复时必填 | `501` |
+| rootParentId | long | 否 | 根评论ID，回复楼中楼时必填 | `501` |
 
-**说明**：`nickname` 和 `email` 将直接从当前登录用户的信息中获取，不再需要前端通过请求体传递。同时 `user_agent` 字段后端也将自动从请求头中提取。
+**后端处理逻辑**：
+1. **身份提取**：后端自动从解析后的 JWT 中提取 `userId`。
+2. **信息关联**：系统根据 `userId` 自动从 `sys_user` 表中查询该用户的 `nickname` 和 `email`。
+3. **环境记录**：自动获取请求者的 `ip_address` 和 `user_agent`。
 
-**成功响应**
+**请求示例**
+```http
+POST /api/blog/comment
+Authorization: Bearer <Access-Token>
+Content-Type: application/json
+
+{
+  "articleId": 100,
+  "content": "写的不错，赞一个！",
+  "parentId": null
+}
+```
+
+**成功响应 (200)**
 ```json
 {
   "code": 0,
   "message": "操作成功",
+  "data": null
+}
+```
+
+**错误响应 - 未登录 (401)**
+```json
+{
+  "code": 2001,
+  "message": "请先登录后再操作",
   "data": null
 }
 ```
@@ -2384,19 +2415,42 @@ GET /api/admin/statistics/visit?topPagesLimit=5
 
 **请求体 (JSON)**
 
-| 字段名 | 类型 | 必填 | 说明 |
-|:---|:---|:---|:---|
-| name | string | 是 | 网站名称 |
-| url | string | 是 | 网站地址 |
-| icon | string | 否 | 网站图标URL |
-| description | string | 否 | 网站描述 |
-| email | string | 否 | 站长邮箱（用于通知审核结果） |
+| 字段名 | 类型 | 必填 | 说明 | 示例 |
+|:---|:---|:---|:---|:---|
+| name | string | 是 | 您的网站名称 | `玄的实验室` |
+| url | string | 是 | 您的网站地址 | `https://xuan.com` |
+| icon | string | 否 | 网站图标URL | `https://xuan.com/logo.png` |
+| description | string | 否 | 简短的网站描述 | `记录代码与生活` |
+| email | string | 否 | 站长联络邮箱 | `admin@xuan.com` |
+
+**请求示例**
+```http
+POST /api/blog/friend-link
+Authorization: Bearer <Access-Token>
+Content-Type: application/json
+
+{
+  "name": "玄的实验室",
+  "url": "https://xuan.com",
+  "icon": "https://xuan.com/logo.png",
+  "description": "代码与生活"
+}
+```
 
 **成功响应**
 ```json
 {
   "code": 0,
   "message": "申请已提交，请等待管理员审核",
+  "data": null
+}
+```
+
+**错误响应 - 未登录 (401)**
+```json
+{
+  "code": 2001,
+  "message": "请先登录后再操作",
   "data": null
 }
 ```
