@@ -1,5 +1,6 @@
 package com.xuan.service.controller.blog;
 
+import com.xuan.service.annotation.RateLimit;
 import com.xuan.common.domain.Result;
 import com.xuan.entity.dto.comment.CommentCreateDTO;
 import com.xuan.entity.vo.comment.CommentPageVO;
@@ -62,6 +63,7 @@ public class CommentController {
     }
 
     @Operation(summary = "发表评论")
+    @RateLimit(maxCount = 3, message = "评论太频繁，请稍后再试")
     @PostMapping
     public Result<Void> createComment(@Validated @RequestBody CommentCreateDTO dto, HttpServletRequest request) {
         String ip = request.getRemoteAddr();

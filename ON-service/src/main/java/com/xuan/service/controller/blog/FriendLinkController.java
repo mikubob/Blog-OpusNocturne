@@ -1,5 +1,6 @@
 package com.xuan.service.controller.blog;
 
+import com.xuan.service.annotation.RateLimit;
 import com.xuan.common.domain.Result;
 import com.xuan.entity.dto.friendLink.FriendLinkApplyAndUpdateDTO;
 import com.xuan.entity.po.interact.FriendLink;
@@ -26,6 +27,7 @@ public class FriendLinkController {
     private final IFriendLinkService friendLinkService;
 
     @Operation(summary = "申请友情链接")
+    @RateLimit(maxCount = 2, message = "申请太频繁，请稍后再试")
     @PostMapping
     public Result<Void> applyFriendLink(@Validated @RequestBody FriendLinkApplyAndUpdateDTO dto) {
         friendLinkService.applyFriendLink(dto);

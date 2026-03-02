@@ -14,8 +14,13 @@ import org.aspectj.lang.annotation.Pointcut;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.multipart.MultipartFile;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 接口日志切面
@@ -25,7 +30,6 @@ import java.time.LocalDateTime;
  * @since 2026-02-21
  **/
 
-
 @Aspect
 @Component
 @Slf4j
@@ -34,9 +38,9 @@ public class LogAspect {
 
     private final SysOperLogMapper operLogMapper;
 
-/**
-     * 切入点：所有 Controller 包下的方法*/
-
+    /**
+     * 切入点：所有 Controller 包下的方法
+     */
 
     @Pointcut("execution(* com.xuan.service.controller..*.*(..))")
     public void controllerPointcut() {
@@ -78,10 +82,10 @@ public class LogAspect {
             log.info("{}: {}.{} | 耗时: {}ms", status == 1 ? "<==== 响应" : "<==== 异常", className, methodName, costTime);
 
             // 异步持久化操作日志 (目前先采用同步)
-        // 记录所有管理端操作以及非 GET 请求
-        if (uri.contains("/admin/") || !"GET".equalsIgnoreCase(method)) {
-            saveLog(joinPoint, method, uri, ipLocation, username, result, status, errorMsg, costTime);
-        }
+            // 记录所有管理端操作以及非 GET 请求
+            if (uri.contains("/admin/") || !"GET".equalsIgnoreCase(method)) {
+                saveLog(joinPoint, method, uri, ipLocation, username, result, status, errorMsg, costTime);
+            }
         }
     }
 
@@ -96,8 +100,8 @@ public class LogAspect {
                     .operName(username)
                     .operUrl(uri)
                     .operIp(ipLocation)
-                    .operParam(JSON.toJSONString(joinPoint.getArgs()))
-                    .jsonResult(result != null ? JSON.toJSONString(result) : null)
+                    .operParam(getArgumentsJson(joinPoint.getArgs()))
+                    .jsonResult(result != null ? filterAndConvertToJson(result) : null)
                     .status(status)
                     .errorMsg(errorMsg)
                     .operTime(LocalDateTime.now())
@@ -122,5 +126,49 @@ public class LogAspect {
             case "DELETE" -> "3";
             default -> "0";
         };
+    }
+
+    /**
+     * 获取请求参数的 JSON 字符串，过滤掉不可序列化的对象
+     */
+    private String getArgumentsJson(Object[] args) {
+        if (args == null || args.length == 0) {
+            return "";
+        }
+        List<Object> logArgs = new ArrayList<>();
+        for (Object arg : args) {
+            if (isFilterObject(arg)) {
+                continue;
+            }
+            logArgs.add(arg);
+        }
+        try {
+            return JSON.toJSONString(logArgs);
+        } catch (Exception e) {
+            return "serialization_failed";
+        }
+    }
+
+    /**
+     * 过滤并转换响应结果为 JSON
+     */
+    private String filterAndConvertToJson(Object result) {
+        if (result == null || isFilterObject(result)) {
+            return null;
+        }
+        try {
+            return JSON.toJSONString(result);
+        } catch (Exception e) {
+            return "serialization_failed";
+        }
+    }
+
+    /**
+     * 判断对象是否需要过滤（不可序列化的 Servlet 对象或文件对象）
+     */
+    private boolean isFilterObject(Object arg) {
+        return arg instanceof ServletRequest ||
+                arg instanceof ServletResponse ||
+                arg instanceof MultipartFile;
     }
 }

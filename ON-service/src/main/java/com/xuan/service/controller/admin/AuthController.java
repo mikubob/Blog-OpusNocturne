@@ -1,5 +1,6 @@
 package com.xuan.service.controller.admin;
 
+import com.xuan.service.annotation.RateLimit;
 import com.xuan.common.domain.Result;
 import com.xuan.entity.dto.auth.ChangePasswordDTO;
 import com.xuan.entity.dto.auth.LoginDTO;
@@ -29,6 +30,7 @@ public class AuthController {
     private final IAuthService authService;
 
     @Operation(summary = "用户登录")
+    @RateLimit(maxCount = 5, message = "登录尝试过于频繁，请稍后再试")
     @PostMapping("/login")
     public Result<LoginVO> login(@Validated @RequestBody LoginDTO loginDTO) {
         return Result.success(authService.login(loginDTO));
@@ -57,6 +59,7 @@ public class AuthController {
     }
 
     @Operation(summary = "修改密码")
+    @RateLimit(maxCount = 3, message = "操作过于频繁，请稍后再试")
     @PutMapping("/change-password")
     public Result<Void> changePassword(@Validated @RequestBody ChangePasswordDTO dto,
             HttpServletRequest request) {
