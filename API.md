@@ -739,6 +739,12 @@ axios.put('/api/admin/auth/change-password', {
 | slug | string | 否 | URL别名(SEO)，如 `spring-boot-3-practice`。**如果不填写，系统会根据标题自动生成** |
 | keywords | string | 否 | SEO关键词，多个关键词用逗号分隔，如 `Spring Boot,Java`。**- 由作者完全手动填写，系统不会自动生成，多个关键词用逗号分隔，如 Spring Boot,Java,JDK21** |
 
+**Markdown图片处理说明**
+- 文章中的图片需要先通过 `/api/admin/attachment/upload` 接口上传
+- 上传成功后获取返回的图片URL
+- 将获取到的URL插入到Markdown内容中，格式为 `![图片描述](图片URL)`
+- 直接复制粘贴的图片不会自动上传，需要手动处理
+
 **标签关联说明**
 - 通过 `tagIds` 参数管理 `article_tag` 关联关系
 - 创建时根据 `tagIds` 生成关联记录
@@ -849,6 +855,12 @@ axios.post('/api/admin/article', {
 | status | int | 是 | 状态：0-草稿，1-发布，2-下架 |
 | slug | string | 否 | URL别名(SEO)，如 `spring-boot-3-practice`。**如果不填写，系统会根据标题自动生成** |
 | keywords | string | 否 | SEO关键词，多个关键词用逗号分隔，如 `Spring Boot,Java`。**由作者手动填写，用于SEO优化** |
+
+**Markdown图片处理说明**
+- 文章中的图片需要先通过 `/api/admin/attachment/upload` 接口上传
+- 上传成功后获取返回的图片URL
+- 将获取到的URL插入到Markdown内容中，格式为 `![图片描述](图片URL)`
+- 直接复制粘贴的图片不会自动上传，需要手动处理
 
 **成功响应**
 ```json
