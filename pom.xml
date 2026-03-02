@@ -39,6 +39,7 @@
         <hutool.version>5.8.32</hutool.version>
         <fastjson2.version>2.0.54</fastjson2.version>
         <oshi.version>6.6.1</oshi.version>
+        <ip2region.version>2.7.0</ip2region.version>
     </properties>
 
     <!--
@@ -89,6 +90,11 @@
                 <groupId>com.github.oshi</groupId>
                 <artifactId>oshi-core</artifactId>
                 <version>${oshi.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.lionsoul</groupId>
+                <artifactId>ip2region</artifactId>
+                <version>${ip2region.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

@@ -1,7 +1,10 @@
 package com.xuan.common.utils;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.lionsoul.ip2region.xdb.Searcher;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
@@ -11,6 +14,22 @@ import java.net.UnknownHostException;
  * @author 玄〤
  */
 public class IpUtils {
+
+    private static Searcher searcher;
+
+    static {
+        try {
+            // 从classpath加载ip2region.xdb文件
+            InputStream inputStream = IpUtils.class.getClassLoader().getResourceAsStream("ip2region.xdb");
+            if (inputStream != null) {
+                byte[] bytes = inputStream.readAllBytes();
+                searcher = Searcher.newWithBuffer(bytes);
+                inputStream.close();
+            }
+        } catch (Exception e) {
+            // 静默处理异常，确保系统正常运行
+        }
+    }
 
     public static String getIpAddr(HttpServletRequest request) {
         if (request == null) {
@@ -45,5 +64,51 @@ public class IpUtils {
             }
         }
         return ip;
+    }
+
+    /**
+     * 根据IP地址获取地理位置
+     * @param ip IP地址
+     * @return 地理位置，解析失败返回"未知"
+     */
+    public static String getIpLocation(String ip) {
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            return "未知";
+        }
+        
+        // 本地IP返回本地
+        if ("127.0.0.1".equals(ip) || "0:0:0:0:0:0:0:1".equals(ip)) {
+            return "本地";
+        }
+        
+        if (searcher == null) {
+            return "未知";
+        }
+        
+        try {
+            String region = searcher.search(ip);
+            if (region != null) {
+                // 格式：国家|区域|省份|城市|ISP
+                String[] parts = region.split("\\|");
+                StringBuilder location = new StringBuilder();
+                
+                // 只取省份和城市
+                if (parts.length > 2 && !"0".equals(parts[2])) {
+                    location.append(parts[2]);
+                }
+                if (parts.length > 3 && !"0".equals(parts[3])) {
+                    if (location.length() > 0) {
+                        location.append(" ");
+                    }
+                    location.append(parts[3]);
+                }
+                
+                return location.length() > 0 ? location.toString() : "未知";
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        
+        return "未知";
     }
 }

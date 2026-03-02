@@ -1598,7 +1598,7 @@ axios.delete('/api/admin/article/batch-delete', {
 |:---|:---|:---|
 | total | long | 顶级评论总数，用于前端计算总页数 |
 | list | array | 当前页的顶级评论列表，每条内部嵌套其子评论 |
-| list[].id | long | 评论ID |
+| list[].id | long | 评论ID（仅用于前端技术处理，不建议在界面上展示） |
 | list[].nickname | string | 评论人昵称 |
 | list[].content | string | 评论内容 |
 | list[].createTime | string | 发表时间 |
@@ -1680,7 +1680,7 @@ axios.delete('/api/admin/article/batch-delete', {
 
 | 字段 | 类型 | 说明 |
 |:---|:---|:---|
-| id | long | 评论ID |
+| id | long | 评论ID（仅用于前端技术处理，不建议在界面上展示） |
 | nickname | string | 评论人昵称 |
 | content | string | 评论内容 |
 | createTime | string | 发表时间 |
@@ -2760,7 +2760,7 @@ GET /api/admin/statistics/visit?topPagesLimit=5
 | startTime | string | 否 | `2023-10-01 00:00:00` | 开始时间 |
 | endTime | string | 否 | `2023-10-02 00:00:00` | 结束时间 |
 | pageUrl | string | 否 | `/blog/article/1` | 访问页面URL |
-| ipAddress | string | 否 | `127.0.0.1` | IP地址 |
+| ipAddress | string | 否 | `江苏省 南京市` | IP地址（已解析为地理位置，如"江苏省 南京市"） |
 
 **成功响应**
 ```json
@@ -2771,7 +2771,7 @@ GET /api/admin/statistics/visit?topPagesLimit=5
     "records": [
       {
         "id": 1,
-        "ipAddress": "127.0.0.1",
+        "ipAddress": "本地",
         "userAgent": "Mozilla/5.0...",
         "visitTime": "2023-10-01 10:00:00",
         "pageUrl": "/blog/article/1",

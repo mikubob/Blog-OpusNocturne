@@ -61,7 +61,9 @@ public class VisitLogServiceImpl extends ServiceImpl<VisitLogMapper, VisitLog> i
         try {
             //1.写入数据库（持久化日志记录）
             VisitLog visitLog = new VisitLog();
-            visitLog.setIpAddress(ipAddress);
+            // 解析IP地址为具体地理位置
+            String location = com.xuan.common.utils.IpUtils.getIpLocation(ipAddress);
+            visitLog.setIpAddress(location);
             visitLog.setUserAgent(userAgent);
             visitLog.setPageUrl(pageUrl);
             visitLog.setReferer(referer);
