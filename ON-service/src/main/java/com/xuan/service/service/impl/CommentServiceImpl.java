@@ -19,6 +19,9 @@ import com.xuan.service.mapper.ArticleMapper;
 import com.xuan.service.mapper.CommentMapper;
 import com.xuan.service.service.ICommentService;
 import com.xuan.service.service.ISysSettingService;
+import com.xuan.common.utils.SecurityUtils;
+import com.xuan.entity.po.sys.SysUser;
+import com.xuan.service.service.ISysUserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,6 +50,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
 
     private final ArticleMapper articleMapper;
     private final ISysSettingService SysSettingService;
+    private final ISysUserService sysUserService;
 
     /**
      * 前台：分页获取文章评论树
@@ -104,58 +108,65 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
 
     /**
      * 获取文章评论统计
+     * 
      * @param articleId 文章ID
      * @return 评论统计
      */
     @Override
     public Map<String, Long> getArticleCommentStats(Long articleId) {
-        LambdaQueryWrapper<Comment> wrapper=new LambdaQueryWrapper<>();
+        LambdaQueryWrapper<Comment> wrapper = new LambdaQueryWrapper<>();
 
-        //1.构建查询条件
-        if (articleId!=null&&articleId!=0){
-            wrapper.eq(Comment::getArticleId,articleId);
-        }else{
-            wrapper.eq(Comment::getArticleId,0);//留言板功能
+        // 1.构建查询条件
+        if (articleId != null && articleId != 0) {
+            wrapper.eq(Comment::getArticleId, articleId);
+        } else {
+            wrapper.eq(Comment::getArticleId, 0);// 留言板功能
         }
-        wrapper.eq(Comment::getStatus,APPROVED);
-        //2.获取评论总数
-        Long total=count(wrapper);
+        wrapper.eq(Comment::getStatus, APPROVED);
+        // 2.获取评论总数
+        Long total = count(wrapper);
 
-        //3.构建返回结果
+        // 3.构建返回结果
         Map<String, Long> result = new HashMap<>();
-        result.put("total", total!=null?total:0L);
+        result.put("total", total != null ? total : 0L);
         return result;
     }
 
     /**
      * 前台：创建评论
-     * @param dto 创建参数
+     * 
+     * @param dto       创建参数
      * @param ipAddress IP地址
      * @param userAgent 用户代理信息
      */
     @Override
     @Transactional
     public void createComment(CommentCreateDTO dto, String ipAddress, String userAgent) {
-        //1.创建评论信息
+        // 1.从 Security 上下文获取当前登录用户
+        Long currentUserId = SecurityUtils.getUserId();
+        SysUser currentUser = sysUserService.getById(currentUserId);
+
+        // 2.创建评论信息
         Comment comment = new Comment();
         comment.setArticleId(dto.getArticleId());
         comment.setContent(dto.getContent());
-        comment.setNickname(dto.getNickname());
-        comment.setEmail(dto.getEmail());
+        comment.setUserId(currentUserId);
+        comment.setNickname(currentUser.getNickname());
+        comment.setEmail(currentUser.getEmail());
         comment.setParentId(dto.getParentId());
         comment.setRootParentId(dto.getRootParentId());
         comment.setIpAddress(ipAddress);
         comment.setUserAgent(userAgent);
 
-        //2.根据系统设置决定是否需要审核
+        // 2.根据系统设置决定是否需要审核
         SystemSettingVO settings = SysSettingService.getSettings();
         boolean needAudit = settings.getCommentAudit();
         comment.setStatus(needAudit ? PENDING.getCode() : APPROVED.getCode()); // 0-待审核，1-审核通过
 
-        //3.如果有父级评论，则获取被回复人信息
+        // 3.如果有父级评论，则获取被回复人信息
         if (dto.getParentId() != null) {
             Comment parent = getById(dto.getParentId());
-            if (parent != null){
+            if (parent != null) {
                 comment.setReplyUserId(parent.getUserId());
             }
         }
@@ -350,16 +361,16 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
      * 分页获取子评论
      *
      * @param rootParentId 顶级评论ID
-     * @param articleId 文章ID
-     * @param current 当前页码
-     * @param size 每页条数（第一次3条，后续10条）
+     * @param articleId    文章ID
+     * @param current      当前页码
+     * @param size         每页条数（第一次3条，后续10条）
      * @return 子评论列表
      */
     @Override
     public List<CommentTreeVO> getChildComments(Long rootParentId, Long articleId, int current, int size) {
         // 计算分页参数
         int offset = (current - 1) * size;
-        
+
         // 查询子评论
         List<Comment> childComments = list(
                 new LambdaQueryWrapper<Comment>()
@@ -368,13 +379,13 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
                         .eq(Comment::getRootParentId, rootParentId)
                         .orderByAsc(Comment::getCreateTime)
                         .last("LIMIT " + offset + ", " + size));
-        
+
         // 构建评论实体索引，用于查找被回复人昵称
         Map<Long, Comment> commentMap = new HashMap<>();
         for (Comment comment : childComments) {
             commentMap.put(comment.getId(), comment);
         }
-        
+
         // 转换为VO并设置被回复人昵称
         List<CommentTreeVO> childVOs = new ArrayList<>();
         for (Comment child : childComments) {
@@ -387,7 +398,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
             }
             childVOs.add(toVO(child, replyNickname));
         }
-        
+
         return childVOs;
     }
 

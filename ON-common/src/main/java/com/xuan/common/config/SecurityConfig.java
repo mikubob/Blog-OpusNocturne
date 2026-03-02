@@ -25,40 +25,44 @@ import org.springframework.security.web.SecurityFilterChain;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final AuthenticationEntryPointImpl authenticationEntryPoint;
-    private final AccessDeniedHandlerImpl accessDeniedHandler;
+        private final AuthenticationEntryPointImpl authenticationEntryPoint;
+        private final AccessDeniedHandlerImpl accessDeniedHandler;
 
-    /**
-     * 创建安全过滤链
-     */
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        // 禁用 CSRF（使用 JWT，不需要 CSRF 保护）
-        http.csrf(AbstractHttpConfigurer::disable);
+        /**
+         * 创建安全过滤链
+         */
+        @Bean
+        public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+                // 禁用 CSRF（使用 JWT，不需要 CSRF 保护）
+                http.csrf(AbstractHttpConfigurer::disable);
 
-        // 配置会话管理为无状态
-        http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+                // 配置会话管理为无状态
+                http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
-        // 配置异常处理
-        http.exceptionHandling(handler -> handler
-                .authenticationEntryPoint(authenticationEntryPoint)
-                .accessDeniedHandler(accessDeniedHandler));
+                // 配置异常处理
+                http.exceptionHandling(handler -> handler
+                                .authenticationEntryPoint(authenticationEntryPoint)
+                                .accessDeniedHandler(accessDeniedHandler));
 
-        // 配置请求路径放行规则
-        http.authorizeHttpRequests(auth -> auth
-                // 认证相关接口 - 无需认证
-                .requestMatchers("/api/admin/auth/login", "/api/admin/auth/refresh").permitAll()
-                // 前台公开接口 - 无需认证
-                .requestMatchers("/api/blog/**").permitAll()
-                // 静态资源 - 无需认证
-                .requestMatchers("/uploads/**", "/static/**", "/favicon.ico").permitAll()
-                // Knife4j/OpenAPI 文档资源 - 无需认证
-                .requestMatchers("/doc.html", "/webjars/**", "/v3/api-docs/**", "/swagger-resources/**",
-                        "/swagger-ui/**")
-                .permitAll()
-                // 其他所有接口 - 需要认证
-                .anyRequest().authenticated());
+                // 配置请求路径放行规则
+                http.authorizeHttpRequests(auth -> auth
+                                // 认证相关接口 - 无需认证
+                                .requestMatchers("/api/admin/auth/login", "/api/admin/auth/refresh").permitAll()
+                                // 前台公开接口 - GET 请求放行
+                                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/blog/**").permitAll()
+                                // 前台发表评论和申请友链 - 需要认证
+                                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/blog/comment",
+                                                "/api/blog/friend-link")
+                                .authenticated()
+                                // 静态资源 - 无需认证
+                                .requestMatchers("/uploads/**", "/static/**", "/favicon.ico").permitAll()
+                                // Knife4j/OpenAPI 文档资源 - 无需认证
+                                .requestMatchers("/doc.html", "/webjars/**", "/v3/api-docs/**", "/swagger-resources/**",
+                                                "/swagger-ui/**")
+                                .permitAll()
+                                // 其他所有接口 - 需要认证
+                                .anyRequest().authenticated());
 
-        return http.build();
-    }
+                return http.build();
+        }
 }

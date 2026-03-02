@@ -4,7 +4,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.io.Serial;
@@ -50,21 +49,5 @@ public class CommentCreateDTO implements Serializable {
      */
     @Schema(description = "根评论ID，回复楼中楼时必填", example = "501")
     private Long rootParentId;
-
-    /**
-     * 昵称，必填
-     */
-    @NotBlank(message = "昵称不能为空")
-    @Size(max = 50, message = "昵称长度不能超过50字符")
-    @Schema(description = "昵称", example = "用户A", requiredMode = RequiredMode.REQUIRED)
-    private String nickname;
-
-    /**
-     * 邮箱
-     */
-    @Size(max = 100, message = "邮箱长度不能超过100字符")
-    @Schema(description = "邮箱", example = "user@example.com")
-    private String email;
-
 
 }

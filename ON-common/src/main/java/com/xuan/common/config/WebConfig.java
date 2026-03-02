@@ -37,7 +37,7 @@ public class WebConfig implements WebMvcConfigurer {
         @Override
         public void addInterceptors(InterceptorRegistry registry) {
                 registry.addInterceptor(jwtInterceptor)
-                                .addPathPatterns("/api/admin/**") // 拦截所有后台接口
+                                .addPathPatterns("/api/admin/**", "/api/blog/comment", "/api/blog/friend-link") // 拦截后台和前台特定接口
                                 .excludePathPatterns(
                                                 "/api/admin/auth/login", // 排除登录接口
                                                 "/doc.html", // 排除 API 文档

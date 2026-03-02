@@ -1691,7 +1691,7 @@ axios.delete('/api/admin/article/batch-delete', {
 
 
 - **接口路径**: `POST /api/blog/comment`
-- **是否认证**: 否（游客可评论）
+- **是否认证**: 是
 
 > 💡 **树洞/留言板说明**：
 > 当 `articleId` 传 `0` 或 `null` 时，该条内容将被视为**站点留言（树洞）**。
@@ -1713,10 +1713,8 @@ axios.delete('/api/admin/article/batch-delete', {
 | articleId | long | 否 | 文章ID。**传 `0` 代表留言板/树洞** |
 | content | string | 是 | 评论内容 |
 | parentId | long | 否 | 父评论ID，回复时必填 |
-| nickname | string | 是 | 昵称 |
-| email | string | 否 | 邮箱（用于接收回复通知） |
 
-**说明**：`user_agent` 字段无需前端传递，后端将自动从请求头中提取并保存用户设备信息。
+**说明**：`nickname` 和 `email` 将直接从当前登录用户的信息中获取，不再需要前端通过请求体传递。同时 `user_agent` 字段后端也将自动从请求头中提取。
 
 **成功响应**
 ```json
@@ -2380,7 +2378,7 @@ GET /api/admin/statistics/visit?topPagesLimit=5
 ### 12.1 申请友情链接 (Portal)
 
 - **接口路径**: `POST /api/blog/friend-link`
-- **是否认证**: 否
+- **是否认证**: 是
 
 > **审核说明**：所有申请默认进入**待审核**状态，需管理员后台通过后才会显示在友链页面。
 
