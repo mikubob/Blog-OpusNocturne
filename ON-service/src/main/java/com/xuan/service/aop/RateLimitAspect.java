@@ -19,6 +19,8 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import java.lang.reflect.Method;
 import java.util.concurrent.TimeUnit;
 
+import static com.xuan.common.constant.RedisConstant.RATE_LIMIT_KEY_PREFIX;
+
 /**
  * 接口限流切面
  * <p>
@@ -40,9 +42,6 @@ import java.util.concurrent.TimeUnit;
 public class RateLimitAspect {
 
     private final StringRedisTemplate stringRedisTemplate;
-
-    /** Redis Key 前缀 */
-    private static final String RATE_LIMIT_KEY_PREFIX = "rate_limit:";
 
     /**
      * 在标注了 @RateLimit 的方法执行前进行限流检查

@@ -83,4 +83,9 @@ public final class RedisConstant {
     public static final String CAPTCHA_KEY_PREFIX = "captcha:";
     /** 验证码过期时间（分钟） */
     public static final long CAPTCHA_TTL_MINUTES = 5;
+
+    //====================== 频率限制相关 ==================
+
+    /** Redis Key 前缀 */
+    public static final String RATE_LIMIT_KEY_PREFIX = "rate_limit:";
 }
