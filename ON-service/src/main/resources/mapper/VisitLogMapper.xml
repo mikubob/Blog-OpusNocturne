@@ -35,4 +35,9 @@
         ORDER BY count DESC
         LIMIT #{limit}
     </select>
+
+    <!-- 删除指定时间之前的访问日志 -->
+    <delete id="deleteByVisitTimeBefore">
+        DELETE FROM visit_log WHERE visit_time < #{visitTime}
+    </delete>
 </mapper>
