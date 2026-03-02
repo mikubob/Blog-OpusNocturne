@@ -12,6 +12,8 @@ import com.xuan.entity.dto.friendLink.FriendLinkPageQueryDTO;
 import com.xuan.entity.po.interact.FriendLink;
 import com.xuan.service.mapper.FriendLinkMapper;
 import com.xuan.service.service.IFriendLinkService;
+import com.xuan.common.service.INotificationService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -27,7 +29,10 @@ import static com.xuan.common.enums.FriendLinkStatusEnum.PENDING;
  * @author 玄〤
  */
 @Service
+@RequiredArgsConstructor
 public class FriendLinkServiceImpl extends ServiceImpl<FriendLinkMapper, FriendLink> implements IFriendLinkService {
+
+    private final INotificationService notificationService;
 
     /**
      * 分页查询友情链接
@@ -86,6 +91,12 @@ public class FriendLinkServiceImpl extends ServiceImpl<FriendLinkMapper, FriendL
         friendLink.setStatus(PENDING.getCode());
         friendLink.setSort(0);
         save(friendLink);
+        //3.发送友情链接申请通知
+        notificationService.sendFriendLinkApplyNotification(
+                dto.getName(),
+                dto.getUrl(),
+                dto.getEmail()
+        );
     }
 
     /**

@@ -96,4 +96,11 @@ public class SysSettingServiceImpl extends ServiceImpl<SysSettingMapper, SysSett
         //4.删除Redis缓存（下次读取的时候自动重建）
         redisTemplate.delete(SYS_SETTING_CACHE_KEY);
     }
+
+    @Override
+    public String getAdminEmail() {
+        // 优先从缓存中获取
+        SystemSettingVO settings = getSettings();
+        return settings.getAdminEmail();
+    }
 }

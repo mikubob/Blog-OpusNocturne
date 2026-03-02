@@ -3,9 +3,11 @@ package com.xuan.common.handle;
 import com.xuan.common.domain.Result;
 import com.xuan.common.enums.ErrorCode;
 import com.xuan.common.exceptions.BusinessException;
+import com.xuan.common.service.INotificationService;
 import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
@@ -19,6 +21,8 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -34,7 +38,10 @@ import java.util.stream.Collectors;
 @Slf4j
 @Hidden
 @RestControllerAdvice
+@RequiredArgsConstructor
 public class GlobalExceptionHandler {
+
+    private final INotificationService notificationService;
 
     // ==================== 业务异常 ====================
 
@@ -164,6 +171,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NullPointerException.class)
     public Result<?> handleNullPointerException(NullPointerException e) {
         log.error("空指针异常", e);
+        // 发送系统异常告警
+        sendSystemErrorNotification(e);
         return Result.error(ErrorCode.SYSTEM_ERROR);
     }
 
@@ -173,6 +182,32 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public Result<?> handleException(Exception e) {
         log.error("系统异常", e);
+        // 发送系统异常告警
+        sendSystemErrorNotification(e);
         return Result.error(ErrorCode.SYSTEM_ERROR);
+    }
+
+    /**
+     * 发送系统异常告警
+     * @param e 异常对象
+     */
+    private void sendSystemErrorNotification(Exception e) {
+        try {
+            // 获取错误信息
+            String errorMessage = e.getMessage() != null ? e.getMessage() : e.getClass().getName();
+            
+            // 获取错误堆栈
+            StringWriter sw = new StringWriter();
+            PrintWriter pw = new PrintWriter(sw);
+            e.printStackTrace(pw);
+            String errorStack = sw.toString();
+            pw.close();
+            sw.close();
+            
+            // 发送告警通知
+            notificationService.sendSystemErrorNotification(errorMessage, errorStack);
+        } catch (Exception ex) {
+            log.error("发送系统异常告警失败", ex);
+        }
     }
 }
