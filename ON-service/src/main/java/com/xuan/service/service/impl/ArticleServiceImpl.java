@@ -546,7 +546,13 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                 articleDetailVO.setCategoryName(category.getName());
             }
         }
-        // TODO 4.5 填充作者名称
+        // 4.5 填充作者名称
+        if(article.getAuthorId() != null){
+            SysUser user = sysUserMapper.selectById(article.getAuthorId());
+            if(user != null){
+                articleDetailVO.setAuthorNickname(user.getNickname());
+            }
+        }
         // 4.6 填充上一篇/下一篇（同为已发布状态）
         setPrevNextArticle(articleDetailVO, id);
 
