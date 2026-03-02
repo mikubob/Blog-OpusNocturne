@@ -52,6 +52,10 @@ public class SecurityConfig {
                 .requestMatchers("/api/blog/**").permitAll()
                 // 静态资源 - 无需认证
                 .requestMatchers("/uploads/**", "/static/**", "/favicon.ico").permitAll()
+                // Knife4j/OpenAPI 文档资源 - 无需认证
+                .requestMatchers("/doc.html", "/webjars/**", "/v3/api-docs/**", "/swagger-resources/**",
+                        "/swagger-ui/**")
+                .permitAll()
                 // 其他所有接口 - 需要认证
                 .anyRequest().authenticated());
 
