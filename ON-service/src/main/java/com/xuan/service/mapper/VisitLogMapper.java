@@ -40,11 +40,5 @@ public interface VisitLogMapper extends BaseMapper<VisitLog> {
     List<Map<String, Object>> getTopPages(@Param("start") LocalDateTime start, 
                                          @Param("end") LocalDateTime end, 
                                          @Param("limit") int limit);
-
-    /**
-     * 删除指定时间之前的访问日志
-     * @param visitTime 访问时间
-     * @return 删除的记录数
-     */
-    int deleteByVisitTimeBefore(@Param("visitTime") LocalDateTime visitTime);
 }
+
