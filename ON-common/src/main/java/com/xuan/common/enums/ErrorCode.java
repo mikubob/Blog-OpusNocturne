@@ -127,7 +127,12 @@ public enum ErrorCode {
     /** 该友链不存在 */
     FRIEND_LINK_NOT_FOUND(8001, "该友链不存在"),
     /** 该链接已申请过,请勿重复申请 */
-    FRIEND_LINK_ALREADY_APPLIED(8002, "该链接已申请过,请勿重复申请");
+    FRIEND_LINK_ALREADY_APPLIED(8002, "该链接已申请过,请勿重复申请"),
+    
+    // ==================== 验证码相关错误码 9xxx ====================
+    /** 验证码错误 */
+    CAPTCHA_INVALID(9001, "验证码错误");
+
 
     /**
      * 错误码

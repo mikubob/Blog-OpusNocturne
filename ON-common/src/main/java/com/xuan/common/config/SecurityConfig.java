@@ -48,6 +48,8 @@ public class SecurityConfig {
                 http.authorizeHttpRequests(auth -> auth
                                 // 认证相关接口 - 无需认证
                                 .requestMatchers("/api/admin/auth/login", "/api/admin/auth/refresh").permitAll()
+                                // 验证码相关接口 - 无需认证
+                                .requestMatchers("/api/common/captcha/**").permitAll()
                                 // 前台公开接口 - GET 请求放行
                                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/blog/**").permitAll()
                                 // 前台发表评论和申请友链 - 需要认证

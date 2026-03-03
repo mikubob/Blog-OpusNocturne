@@ -2,7 +2,8 @@ package com.xuan.service.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.xuan.common.enums.UserStatusEnum;
+import com.xuan.common.enums.CaptchaType;
+import com.xuan.common.enums.ErrorCode;
 import com.xuan.common.exceptions.BusinessException;
 import com.xuan.common.utils.JwtUtils;
 import com.xuan.common.utils.PasswordUtils;
@@ -14,6 +15,7 @@ import com.xuan.entity.vo.auth.UserInfoVO;
 import com.xuan.service.mapper.SysPermissionMapper;
 import com.xuan.service.mapper.SysUserMapper;
 import com.xuan.service.service.IAuthService;
+import com.xuan.service.service.ICaptchaService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -44,6 +46,7 @@ public class AuthServiceImpl implements IAuthService {
     private final StringRedisTemplate stringRedisTemplate;
     private final SysUserMapper sysUserMapper;
     private final SysPermissionMapper sysPermissionMapper;
+    private final ICaptchaService captchaService;
 
     /**
      * 用户登录
@@ -52,7 +55,17 @@ public class AuthServiceImpl implements IAuthService {
      */
     @Override
     public LoginVO login(LoginDTO loginDTO) {
-        //1.根据用户名查找用户
+        //1.验证验证码
+        boolean isValid = captchaService.validateCaptcha(
+                CaptchaType.LOGIN,
+                loginDTO.getCaptchaKey(),
+                loginDTO.getAnswer()
+        );
+        if (!isValid) {
+            throw new BusinessException(ErrorCode.CAPTCHA_INVALID);
+        }
+        
+        //2.根据用户名查找用户
         SysUser user = userMapper.selectOne(
                 new LambdaQueryWrapper<SysUser>()
                         .eq(SysUser::getUsername, loginDTO.getUsername())
@@ -60,11 +73,11 @@ public class AuthServiceImpl implements IAuthService {
         if (user==null){
             throw new BusinessException(LOGIN_FAILED);
         }
-        //2.校验密码
+        //3.校验密码
         if(!PasswordUtils.matches(loginDTO.getPassword(), user.getPassword())){
             throw new BusinessException(LOGIN_FAILED);
         }
-        //3.检查用户状态
+        //4.检查用户状态
         if(!user.getStatus().equals(ENABLED.getCode())){
             throw new BusinessException(USER_DISABLED);
         }

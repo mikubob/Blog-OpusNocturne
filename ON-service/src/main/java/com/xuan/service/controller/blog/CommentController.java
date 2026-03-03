@@ -6,6 +6,7 @@ import com.xuan.entity.dto.comment.CommentCreateDTO;
 import com.xuan.entity.vo.comment.CommentPageVO;
 import com.xuan.entity.vo.comment.CommentTreeVO;
 import com.xuan.service.service.ICommentService;
+import com.xuan.service.service.ICaptchaService;
 import java.util.List;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -27,6 +28,7 @@ import java.util.Map;
 public class CommentController {
 
     private final ICommentService commentService;
+    private final ICaptchaService captchaService;
 
     /**
      * 分页获取文章评论树

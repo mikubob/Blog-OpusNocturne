@@ -27,15 +27,42 @@
 
 ## 1. 通用说明
 
+### 1.1 验证码说明
+
+系统采用数学计算验证码，用于防止暴力破解和恶意刷评。
+
+**验证码类型**：
+- `LOGIN`：登录场景验证码
+- `COMMENT`：评论场景验证码
+
+**获取验证码流程**：
+1. 前端调用 `GET /api/common/captcha/math` 接口获取验证码
+2. 后端生成数学算式并返回，同时将答案存储到 Redis
+3. 前端展示算式，用户输入答案
+4. 提交表单时，将验证码答案和相关标识一起提交
+5. 后端验证验证码正确性
+
+**验证码有效期**：5分钟
+
+**安全策略**：
+- 验证码答案不存储在前端
+- 验证后立即删除 Redis 中的验证码记录，防止重放攻击
+- 验证码错误不提示具体原因，防止枚举攻击
+
 ### 基础 URL
 开发环境：`http://localhost:8080`
 
 ### 认证方式
-系统采用 JWT 无状态认证。
-- **无需认证**: 前台展示类接口（所有 GET 请求）。
+系统采用 JWT 无状态认证，基于 Spring Security + JWT 实现。
+- **无需认证**: 
+  - 前台展示类接口（所有 `/api/blog/**` 下的 GET 请求）
+  - 登录接口：`/api/admin/auth/login`
+  - 刷新 Token 接口：`/api/admin/auth/refresh`
+  - 静态资源：`/uploads/**`, `/static/**`, `/favicon.ico`
+  - 文档资源：`/doc.html`, `/webjars/**`, `/v3/api-docs/**`, `/swagger-resources/**`, `/swagger-ui/**`
 - **必须认证**: 
-  - **交互类接口**: 发表评论、申请友链（POST 请求）。
-  - **管理类接口**: 所有以 `/api/admin/**` 开头的后台管理接口。
+  - 前台交互类接口：发表评论 (`/api/blog/comment`)、申请友链 (`/api/blog/friend-link`) 的 POST 请求
+  - 所有后台管理接口：以 `/api/admin/**` 开头的接口（登录和刷新 Token 除外）
 
 请在 HTTP 请求头中携带 Token：
 ```http
@@ -44,70 +71,52 @@ Authorization: Bearer <Your-Token>
 
 ### 安全策略系统
 
-#### Token 有效期
-- **Access-Token**: 15 分钟
-- **Refresh-Token**: 7 天
-- **轮换策略**: 每次刷新后旧 RT 即刻失效，新 RT 有效期重置
+#### Token 管理
+- **Token 格式**: JWT (JSON Web Token)，使用 HS256 算法签名
+- **Token 有效期**: 由配置文件定义（默认 15 分钟）
+- **Token 存储**: 服务端将 Token 存储在 Redis 中，用于验证 Token 有效性
+- **Token 验证流程**: 
+  1. 从请求头获取 Token
+  2. 移除 Bearer 前缀
+  3. 解析并验证 Token 签名
+  4. 检查 Redis 中是否存在该 Token
+  5. 验证 Token 是否与 Redis 中存储的一致
 
 #### 多端登录控制
-- 同一账号最多 3 个并发会话
-- 超限时最早会话被踢出并返回 401 错误码
-- 被踢出响应示例：
+- **单设备登录**: 同一账号在新设备登录时，旧设备的 Token 会被失效
+- **Token 失效机制**: 新登录时会更新 Redis 中存储的 Token，旧 Token 会被视为无效
+- **被踢出响应**: 
   ```json
   {
-    "code": "KICKED_BY_NEW_LOGIN",
-    "message": "您的账号已在其他设备登录",
+    "code": 2007,
+    "message": "您的账号已在其他设备登录，如非本人操作请及时修改密码",
     "data": null
   }
   ```
 
-#### SSO 接入点
-- **授权端点**: `/oauth2/authorize`
-- **令牌端点**: `/oauth2/token`
-- **支持流程**: Authorization Code + PKCE
-
-**序列图**：
-```mermaid
-sequenceDiagram
-    participant Client as 客户端
-    participant Auth as 认证服务器
-    participant Resource as 资源服务器
-
-    Client->>Auth: GET /oauth2/authorize?client_id=...&redirect_uri=...&scope=...&code_challenge=...&code_challenge_method=S256&response_type=code
-    Auth-->>Client: 重定向到登录页面
-    Client->>Auth: 提交用户名密码
-    Auth-->>Client: 重定向到 redirect_uri?code=...
-    Client->>Auth: POST /oauth2/token?grant_type=authorization_code&code=...&redirect_uri=...&code_verifier=...&client_id=...
-    Auth-->>Client: 200 OK { "access_token": "...", "refresh_token": "...", "expires_in": 900 }
-    Client->>Resource: 请求资源 (携带 access_token)
-    Resource-->>Client: 返回资源
-```
-
 #### 审计日志
-- 所有包含敏感词接口（登录、改密、赋权）强制记录审计事件
-- 文档中标注"本接口会产生审计日志"
-- 审计内容包括：操作人、操作时间、操作类型、操作结果、IP地址等
+- **记录范围**: 登录、退出、修改密码、权限变更等敏感操作
+- **记录内容**: 操作人、操作时间、操作类型、操作结果、IP 地址、请求路径等
+- **实现方式**: 通过 AOP 切面 `LogAspect` 实现，自动记录敏感操作
 
 ### HTTP 状态码策略
 
 | HTTP 状态码 | 含义 | 适用场景 |
 |:---:|:---|:---|
-| **200** | 业务成功 | 常规查询、读取操作 |
-| **201** | 资源创建成功 | POST 新增操作 |
-| **204** | 无内容返回 | DELETE/PUT 成功且无需 body |
+| **200** | 业务成功 | 所有成功响应（包括带数据和无数据） |
 | **400** | 请求参数非法 | 缺少字段、类型错误、自定义校验失败 |
-| **401** | 未携带或携带无效 Token | 未登录、Token 过期、被踢出 |
-| **403** | 已认证但权限不足 | 角色、菜单、数据权限不足 |
-| **404** | 资源或接口不存在 | 访问的资源不存在 |
-| **409** | 业务冲突 | 唯一索引、乐观锁 version 不一致 |
-| **422** | 业务校验失败 | 自定义 code 枚举 |
-| **429** | 接口限流触发 | 请求过于频繁 |
-| **500** | 系统异常 | 未预期异常、数据库连接失败 |
+| **401** | 未认证 | 未携带 Token、Token 过期、Token 无效、被踢出 |
+| **403** | 权限不足 | 已认证但无权限执行操作 |
+| **404** | 资源不存在 | 访问的资源不存在 |
+| **405** | 方法不允许 | 请求方法与接口不匹配 |
+| **429** | 请求过于频繁 | 触发接口限流 |
+
+> ⚠️ **注意**：系统所有接口统一返回 HTTP 200 状态码，业务错误通过响应体中的 `code` 字段区分。
 
 ### 统一响应结构
 所有接口均返回统一的 JSON 格式，基于 `Result` 类设计：
 
-**成功（200/201 - 带数据）**
+**成功（带数据）**
 ```json
 {
   "code": 0,
@@ -116,7 +125,7 @@ sequenceDiagram
 }
 ```
 
-**成功（204 - 无数据）**
+**成功（无数据）**
 ```json
 {
   "code": 0,
@@ -125,7 +134,7 @@ sequenceDiagram
 }
 ```
 
-**失败（400/401/403/404/409/422/429/500）**
+**失败**
 ```json
 {
   "code": 2001,
@@ -142,6 +151,7 @@ sequenceDiagram
 | **1000** | SYSTEM_ERROR | 系统繁忙，请稍后再试 | 未预期的系统异常 |
 | **1001** | PARAM_ERROR | 请求参数有误，请检查后重试 | 参数校验失败 |
 | **1002** | NOT_FOUND | 您访问的内容不存在 | 404 资源不存在 |
+| **1003** | OPERATION_FAILED | 操作失败，请稍后再试 | 操作执行失败 |
 | **1004** | METHOD_NOT_ALLOWED | 不支持该请求方式 | 405 请求方法错误 |
 | **1005** | TOO_MANY_REQUESTS | 请求过于频繁，请稍后再试 | 限流拦截 |
 | **1006** | DATA_ALREADY_EXISTS | 数据已存在，请勿重复操作 | 唯一约束冲突 |
@@ -150,11 +160,13 @@ sequenceDiagram
 | **2004** | LOGIN_FAILED | 用户名或密码错误，请重新输入 | 登录失败 |
 | **2005** | TOKEN_EXPIRED | 登录已过期，请重新登录 | Token 过期 |
 | **2006** | TOKEN_INVALID | 登录凭证无效，请重新登录 | Token 解析失败 |
-| **2007** | TOKEN_REPLACED | 您的账号已在其他设备登录... | 多端登录被顶替 |
+| **2007** | TOKEN_REPLACED | 您的账号已在其他设备登录，如非本人操作请及时修改密码 | 多端登录被顶替 |
 | **3001** | USER_NOT_FOUND | 用户不存在 | 用户查询失败 |
 | **3002** | USER_DISABLED | 该账号已被禁用，请联系管理员 | 账号被禁 |
 | **3003** | USER_EXISTS | 该用户名已被注册 | 用户名重复 |
+| **3004** | PASSWORD_ERROR | 密码错误 | 密码校验失败 |
 | **3005** | OLD_PASSWORD_ERROR | 原密码不正确，请重新输入 | 修改密码校验 |
+| **3006** | PASSWORD_NOT_MATCH | 两次输入的密码不一致，请重新输入 | 密码确认校验 |
 | **4001** | ROLE_NOT_FOUND | 角色不存在 | 角色查询失败 |
 | **4002** | ROLE_EXISTS | 该角色名称已存在 | 角色名重复 |
 | **4003** | PERMISSION_NOT_FOUND | 权限不存在 | 权限查询失败 |
@@ -165,26 +177,39 @@ sequenceDiagram
 | **5005** | TAG_EXISTS | 该标签名称已存在 | 标签名重复 |
 | **5006** | CATEGORY_HAS_ARTICLES | 该分类下还有文章，无法删除 | 删除分类时存在关联文章 |
 | **5007** | ARTICLE_CREATE_FAILED | 文章创建失败，请稍后再试 | 文章创建操作失败 |
-| **5008** | ARTICLE_DELETE_EMPTY | 没有选择要删除的文章 | 批量删除文章时未选择文章 |
+| **5008** | ARTICLE_DELETE_EMPTY | 请选择要删除的文章 | 批量删除文章时未选择文章 |
+| **5009** | CATEGORY_DELETE_EMPTY | 请选择要删除的分类 | 批量删除分类时未选择分类 |
+| **5010** | TAG_DELETE_EMPTY | 请选择要删除的标签 | 批量删除标签时未选择标签 |
 | **6001** | COMMENT_NOT_FOUND | 评论不存在或已被删除 | 评论查询失败 |
+| **6002** | COMMENT_AUDIT_FAILED | 评论审核失败 | 评论审核操作失败 |
 | **6003** | COMMENT_CONTENT_EMPTY | 评论内容不能为空 | 评论校验 |
+| **6004** | COMMENT_DELETE_EMPTY | 请选择要删除的评论 | 批量删除评论时未选择评论 |
+| **6005** | COMMENT_AUDIT_EMPTY | 请选择要审核的评论 | 批量审核评论时未选择评论 |
 | **7001** | FILE_UPLOAD_FAILED | 文件上传失败，请稍后再试 | 文件上传异常 |
-| **7002** | FILE_TYPE_ERROR | 不支持该文件格式... | 文件类型校验 |
+| **7002** | FILE_TYPE_ERROR | 不支持该文件格式，请上传正确的文件类型 | 文件类型校验 |
 | **7003** | FILE_SIZE_EXCEEDED | 文件大小超出限制，请压缩后重试 | 文件过大 |
+| **7004** | FILE_NOT_FOUND | 文件不存在 | 文件查询失败 |
+| **7005** | FILE_PARTIAL_NOT_FOUND | 部分附件不存在，请刷新后重试 | 附件查询失败 |
+| **8001** | FRIEND_LINK_NOT_FOUND | 该友链不存在 | 友链查询失败 |
+| **8002** | FRIEND_LINK_ALREADY_APPLIED | 该链接已申请过,请勿重复申请 | 友链申请重复 |
+| **9001** | CAPTCHA_INVALID | 验证码错误 | 验证码验证失败 |
 
 ### 分页规则
-分页查询接口通常包含以下查询参数：
+分页查询接口使用统一的分页参数，基于 `BasePageQueryDTO` 类：
+
+**查询参数**：
 - `current`: 当前页码，默认 1
 - `size`: 每页条数，默认 10
+- `keyword`: 可选，搜索关键词（如有）
 
-分页响应数据结构：
+**分页响应数据结构**：
 ```json
 {
-  "records": [ ... ],
-  "total": 100,
-  "size": 10,
-  "current": 1,
-  "pages": 10
+  "records": [ ... ],  // 数据列表
+  "total": 100,        // 总记录数
+  "size": 10,          // 每页条数
+  "current": 1,        // 当前页码
+  "pages": 10          // 总页数
 }
 ```
 
@@ -196,14 +221,11 @@ sequenceDiagram
 |:---|:---|:---|
 | 日期时间 | `yyyy-MM-dd HH:mm:ss` | `2026-02-20 10:30:00` |
 | 日期 | `yyyy-MM-dd` | `2026-02-20` |
+| 时间 | `HH:mm:ss` | `10:30:00` |
 
 > ⚠️ **注意**：前端发送的时间参数请同样使用上述格式，避免因格式差异导致解析失败。
->
-> 对应 Spring Boot 配置：
-> ```yaml
-> spring.jackson.date-format: yyyy-MM-dd HH:mm:ss
-> spring.jackson.time-zone: Asia/Shanghai
-> ```
+> 
+> 实现方式：通过 `JacksonConfig` 配置类统一设置 Java 8 时间类型的序列化和反序列化格式。
 
 ### 空值处理约定
 
@@ -216,6 +238,44 @@ sequenceDiagram
 
 ---
 
+## 1.2 验证码接口
+
+### 1.2.1 获取数学计算验证码
+
+- **接口路径**: `GET /api/common/captcha/math`
+- **是否认证**: 否
+- **功能说明**: 获取数学计算验证码，用于登录和评论场景
+
+**查询参数**
+
+| 名称 | 类型 | 必填 | 说明 | 示例 |
+|:---|:---|:---|:---|:---|
+| type | string | 是 | 验证码类型：`LOGIN` 或 `COMMENT` | `LOGIN` |
+| uuid | string | 否 | 登录场景下的临时标识，由前端生成 | `uuid123456` |
+
+**成功响应**
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": {
+    "question": "8 × 5 = ?",
+    "captchaKey": "captcha:login:127.0.0.1:uuid123456"
+  }
+}
+```
+
+**失败响应**
+- **参数错误**
+```json
+{
+  "code": 1001,
+  "message": "登录场景下必须提供uuid",
+  "data": null
+}
+```
+
+---
 
 ## 2. 幂等 & 并发策略
 
@@ -228,65 +288,35 @@ sequenceDiagram
 | **PUT** | ✓ | 天然幂等，多次调用最终状态一致 |
 | **DELETE** | ✓ | 天然幂等，多次调用最终状态一致 |
 
-### 2.2 非幂等 POST 接口的幂等处理
+### 2.2 接口限流策略
 
-**幂等键生成规则**：
-- 客户端生成唯一的 `Idempotency-Key` 头（建议使用 UUID v4）
-- 服务端存储时长：24 小时
-- 冲突返回：409 Conflict
+- **实现方式**: 基于 Redis 的滑动窗口限流
+- **适用场景**: 登录、注册、修改密码、评论、友链申请等敏感接口
+- **配置**: 通过 `@RateLimit` 注解设置限流规则
+- **示例**: 
+  ```java
+  @RateLimit(maxCount = 5, message = "登录尝试过于频繁，请稍后再试")
+  @PostMapping("/login")
+  public Result<LoginVO> login(@Validated @RequestBody LoginDTO loginDTO) {
+      // 登录逻辑
+  }
+  ```
 
-**示例请求头**：
-```http
-POST /api/admin/article
-Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
-```
+### 2.3 安全防护
+
+#### XSS 防护
+- **实现方式**: 自定义 `XssFilter` 过滤器
+- **处理逻辑**: 过滤请求参数中的恶意脚本
+
+#### CSRF 防护
+- **实现方式**: 禁用 CSRF（使用 JWT 无需 CSRF 保护）
+- **配置**: 在 `SecurityConfig` 中禁用 CSRF
+
+#### SQL 注入防护
+- **实现方式**: 使用 MyBatis-Plus 的参数绑定
+- **处理逻辑**: 自动转义 SQL 参数
 
 
-
-### 2.3 防重 Token 流程
-
-```mermaid
-sequenceDiagram
-    participant Client as 前端
-    participant Server as 服务端
-    participant Redis as Redis
-
-    Client->>Server: GET /api/admin/token/anti-duplicate
-    Server->>Redis: 生成一次性 token 并存入
-    Server-->>Client: 200 OK { "token": "xxx" }
-    
-    Client->>Server: POST /api/admin/xxx (携带 token)
-    Server->>Redis: Lua 脚本原子校验并删除 token
-    alt Token 有效
-        Server->>Server: 执行业务逻辑
-        Server-->>Client: 200 OK / 201 Created
-    else Token 无效/已使用
-        Server-->>Client: 409 Conflict { "code": "DUPLICATE_REQUEST" }
-    end
-```
-
-### 2.4 并发写冲突示例
-
-**请求**：
-```http
-PUT /api/admin/article/100
-Content-Type: application/json
-
-{
-  "title": "Spring Boot 实战",
-  "content": "...",
-  "version": 1
-}
-```
-
-**响应（409 Conflict）**：
-```json
-{
-  "code": 409,
-  "message": "数据版本不一致，请刷新后重试",
-  "data": null
-}
-```
 
 ---
 
@@ -305,17 +335,44 @@ Content-Type: application/json
 |:---|:---|:---|:---|:---|
 | username | string | 是 | 用户名 | `admin` |
 | password | string | 是 | 密码 | `admin123` |
+| answer | string | 是 | 验证码答案 | `40` |
+| captchaKey | string | 是 | 验证码key，从获取验证码接口返回 | `captcha:login:127.0.0.1:uuid123456` |
 
 **前端调用示例**
 ```javascript
-axios.post('/api/admin/auth/login', {
-  username: 'admin',
-  password: 'admin123'
-}).then(response => {
-  const token = response.data.data.token;
+// 1. 获取验证码
+axios.get('/api/common/captcha/math', {
+  params: {
+    type: 'LOGIN',
+    uuid: 'uuid123456'
+  }
+}).then(captchaResponse => {
+  const question = captchaResponse.data.data.question;
+  const captchaKey = captchaResponse.data.data.captchaKey;
+  
+  // 2. 显示验证码问题，用户输入答案
+  const answer = prompt(question);
+  
+  // 3. 登录
+  return axios.post('/api/admin/auth/login', {
+    username: 'admin',
+    password: 'admin123',
+    answer: answer,
+    captchaKey: captchaKey
+  });
+}).then(loginResponse => {
+  const token = loginResponse.data.data.token;
   localStorage.setItem('token', token);
 });
 ```
+
+**后端处理逻辑**：
+1. 验证验证码正确性
+2. 验证用户名和密码
+3. 检查用户状态
+4. 生成JWT Token
+5. 更新用户最后登录时间
+6. 返回登录结果
 
 **成功响应（200）**
 ```json
@@ -1719,11 +1776,13 @@ axios.delete('/api/admin/article/batch-delete', {
 | content | string | 是 | 评论内容 | `非常有深度的文章！` |
 | parentId | long | 否 | 父评论ID，回复时必填 | `501` |
 | rootParentId | long | 否 | 根评论ID，回复楼中楼时必填 | `501` |
+| answer | string | 是 | 验证码答案 | `40` |
 
 **后端处理逻辑**：
 1. **身份提取**：后端自动从解析后的 JWT 中提取 `userId`。
-2. **信息关联**：系统根据 `userId` 自动从 `sys_user` 表中查询该用户的 `nickname` 和 `email`。
-3. **环境记录**：自动获取请求者的 `ip_address` 和 `user_agent`。
+2. **验证码验证**：使用 `userId` 构建验证码 Key，验证验证码正确性。
+3. **信息关联**：系统根据 `userId` 自动从 `sys_user` 表中查询该用户的 `nickname` 和 `email`。
+4. **环境记录**：自动获取请求者的 `ip_address` 和 `user_agent`。
 
 **请求示例**
 ```http
@@ -1734,8 +1793,41 @@ Content-Type: application/json
 {
   "articleId": 100,
   "content": "写的不错，赞一个！",
-  "parentId": null
+  "parentId": null,
+  "answer": "40"
 }
+```
+
+**前端调用示例**
+```javascript
+// 1. 获取验证码（已登录状态）
+axios.get('/api/common/captcha/math', {
+  params: {
+    type: 'COMMENT'
+  },
+  headers: {
+    Authorization: 'Bearer ' + localStorage.getItem('token')
+  }
+}).then(captchaResponse => {
+  const question = captchaResponse.data.data.question;
+  
+  // 2. 显示验证码问题，用户输入答案
+  const answer = prompt(question);
+  
+  // 3. 发表评论
+  return axios.post('/api/blog/comment', {
+    articleId: 100,
+    content: '写的不错，赞一个！',
+    parentId: null,
+    answer: answer
+  }, {
+    headers: {
+      Authorization: 'Bearer ' + localStorage.getItem('token')
+    }
+  });
+}).then(response => {
+  console.log('评论发表成功');
+});
 ```
 
 **成功响应 (200)**

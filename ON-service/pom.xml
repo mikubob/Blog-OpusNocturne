@@ -18,10 +18,13 @@
         说明：通过传递依赖已获得 Redis、Web、Security、FastJSON、MyBatis-Plus 等
     -->
     <dependencies>
-        <!-- 实体模块（传递引入 ON-common 及其全部依赖） -->
+
+        
+        <!-- 实体模块 -->
         <dependency>
             <groupId>com.xuan</groupId>
             <artifactId>ON-entity</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
         </dependency>
 
         <!-- Druid 数据库连接池（仅 service 层需要） -->

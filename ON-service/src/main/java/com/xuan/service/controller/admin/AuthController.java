@@ -7,6 +7,7 @@ import com.xuan.entity.dto.auth.LoginDTO;
 import com.xuan.entity.vo.auth.LoginVO;
 import com.xuan.entity.vo.auth.UserInfoVO;
 import com.xuan.service.service.IAuthService;
+import com.xuan.service.service.ICaptchaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;

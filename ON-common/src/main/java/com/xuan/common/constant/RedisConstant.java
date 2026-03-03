@@ -81,6 +81,10 @@ public final class RedisConstant {
 
     /** 邮箱验证码缓存前缀，完整 Key: captcha:{type}:{email} */
     public static final String CAPTCHA_KEY_PREFIX = "captcha:";
+    /** 登录验证码缓存前缀，完整 Key: captcha:login:{ip}:{uuid} */
+    public static final String CAPTCHA_LOGIN_KEY_PREFIX = "captcha:login:";
+    /** 评论验证码缓存前缀，完整 Key: captcha:comment:{userId} */
+    public static final String CAPTCHA_COMMENT_KEY_PREFIX = "captcha:comment:";
     /** 验证码过期时间（分钟） */
     public static final long CAPTCHA_TTL_MINUTES = 5;
 

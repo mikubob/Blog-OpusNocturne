@@ -50,4 +50,11 @@ public class CommentCreateDTO implements Serializable {
     @Schema(description = "根评论ID，回复楼中楼时必填", example = "501")
     private Long rootParentId;
 
+    /**
+     * 验证码答案，必填
+     */
+    @NotBlank(message = "验证码答案不能为空")
+    @Schema(description = "验证码答案", example = "40", requiredMode = RequiredMode.REQUIRED)
+    private String answer;
+
 }

@@ -17,7 +17,10 @@ import com.xuan.entity.vo.comment.CommentTreeVO;
 import com.xuan.entity.vo.system.SystemSettingVO;
 import com.xuan.service.mapper.ArticleMapper;
 import com.xuan.service.mapper.CommentMapper;
+import com.xuan.common.enums.CaptchaType;
+import com.xuan.common.enums.ErrorCode;
 import com.xuan.service.service.ICommentService;
+import com.xuan.service.service.ICaptchaService;
 import com.xuan.service.service.ISysSettingService;
 import com.xuan.common.utils.SecurityUtils;
 import com.xuan.entity.po.sys.SysUser;
@@ -51,6 +54,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
     private final ArticleMapper articleMapper;
     private final ISysSettingService SysSettingService;
     private final ISysUserService sysUserService;
+    private final ICaptchaService captchaService;
 
     /**
      * 前台：分页获取文章评论树
@@ -145,6 +149,16 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         // 1.从 Security 上下文获取当前登录用户
         Long currentUserId = SecurityUtils.getUserId();
         SysUser currentUser = sysUserService.getById(currentUserId);
+        
+        // 2.验证验证码
+        boolean isValid = captchaService.validateCaptcha(
+                CaptchaType.COMMENT,
+                currentUserId.toString(),
+                dto.getAnswer()
+        );
+        if (!isValid) {
+            throw new BusinessException(ErrorCode.CAPTCHA_INVALID);
+        }
 
         // 2.创建评论信息
         Comment comment = new Comment();

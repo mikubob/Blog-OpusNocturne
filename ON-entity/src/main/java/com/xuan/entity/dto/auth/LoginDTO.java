@@ -38,4 +38,18 @@ public class LoginDTO implements Serializable {
     @Size(min = 6, max = 20, message = "密码长度应在6-20个字符之间")
     @Schema(description = "密码，必填", example = "123456", requiredMode = RequiredMode.REQUIRED)
     private String password;
+
+    /**
+     * 验证码答案，必填
+     */
+    @NotBlank(message = "验证码答案不能为空")
+    @Schema(description = "验证码答案", example = "40", requiredMode = RequiredMode.REQUIRED)
+    private String answer;
+
+    /**
+     * 验证码key，必填
+     */
+    @NotBlank(message = "验证码key不能为空")
+    @Schema(description = "验证码key", example = "captcha:login:127.0.0.1:uuid123", requiredMode = RequiredMode.REQUIRED)
+    private String captchaKey;
 }
